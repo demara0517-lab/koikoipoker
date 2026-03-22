@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Outfit:wght@300;600;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Outfit:wght@300;600;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-dark: #0f0514;
@@ -19,11 +19,55 @@
         body {
             background-color: var(--bg-dark);
             color: #fff;
-            font-family: 'Outfit', 'Noto Serif JP', serif;
+            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
             overflow-x: hidden;
             user-select: none;
         }
-        .font-serif-jp { font-family: 'Noto Serif JP', serif; }
+        .font-bold-jp { font-family: 'Noto Sans JP', sans-serif; font-weight: 700; }
+        
+        /* Card Reveal Animation */
+        .card-reveal {
+            perspective: 1000px;
+        }
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .card-reveal.is-revealed .card-inner {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 0.375rem;
+        }
+        .card-back {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        .card-front {
+            transform: rotateY(180deg);
+        }
+
+        /* Blackout Transition */
+        .blackout-overlay {
+            position: fixed;
+            inset: 0;
+            background: black;
+            z-index: 300;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+        }
+        .blackout-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
         
         .neon-text {
             text-shadow: 0 0 5px var(--accent-pink), 0 0 10px var(--accent-pink);
@@ -110,16 +154,23 @@
             </div>
         </div>
 
+        <!-- Blackout Overlay -->
+        <div class="blackout-overlay" :class="{ active: isBlackout }"></div>
+
         <!-- Result Modal -->
         <div v-if="showResultModal" 
              @click="handleResultClick"
              class="absolute inset-0 z-[150] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center cursor-pointer">
+            <!-- 1. AGARI!! -->
             <div class="text-6xl font-black italic mb-2 tracking-tighter animate-bounce"
                  :class="resultWinner === 'player' ? 'text-[#ff2d75] drop-shadow-[0_0_10px_rgba(255,45,117,0.8)]' : 'text-[#9d4edd] drop-shadow-[0_0_10px_rgba(157,78,221,0.8)]'">
-                AGARI!
+                AGARI!!
             </div>
-            <div class="text-2xl font-bold text-white mb-6">{{ resultWinner === 'player' ? 'PLAYER' : 'CPU' }} WIN</div>
             
+            <!-- 2. ＊＊Win -->
+            <div class="text-2xl font-bold-jp text-white mb-6">{{ resultWinner === 'player' ? 'PLAYER' : 'CPU' }} WIN</div>
+            
+            <!-- 3. あがり手札 -->
             <div class="flex flex-wrap justify-center gap-2 mb-6 max-w-xs">
                 <div v-for="(card, i) in resultHand" :key="i" 
                      class="w-12 h-18 rounded-lg flex flex-col items-center justify-center text-sm font-bold border-2 shadow-lg"
@@ -134,19 +185,34 @@
                 </div>
             </div>
             
-            <div class="text-4xl font-black text-white mb-4">
+            <!-- 4. 最終役pt -->
+            <div class="text-4xl font-black text-white mb-2">
                 {{ resultPoints }} <span class="text-xl opacity-60">pt</span>
             </div>
 
-            <!-- Point Breakdown -->
-            <div v-if="resultBreakdown" class="bg-white/5 rounded-xl p-3 w-full max-w-[200px] text-[11px] font-bold flex flex-col gap-1 mb-6 border border-white/10">
+            <!-- 5. 連番、同色、同数、ボーナスの内訳 -->
+            <div v-if="resultBreakdown" class="bg-white/5 rounded-xl p-3 w-full max-w-[200px] text-[11px] font-bold-jp flex-col gap-1 mb-4 border border-white/10 flex">
                 <div class="flex justify-between opacity-60"><span>連番</span><span>{{ resultBreakdown.consecutive }} pt</span></div>
                 <div class="flex justify-between opacity-60"><span>同色</span><span>{{ resultBreakdown.sameColor }} pt</span></div>
                 <div class="flex justify-between opacity-60"><span>同数</span><span>{{ resultBreakdown.sameNum }} pt</span></div>
                 <div class="flex justify-between text-[#ff2d75]"><span>ボーナス</span><span>+{{ resultBreakdown.bonus }} pt</span></div>
             </div>
 
-            <div class="text-white/40 text-xs font-bold tracking-widest animate-pulse mt-4">TAP TO NEXT</div>
+            <!-- 6. 累積ポイント -->
+            <div class="text-sm font-bold-jp text-white/60 mb-6">
+                累積ポイント: {{ resultWinner === 'player' ? playerPoints : cpuPoints }} pt
+            </div>
+
+            <!-- 7. CPUのセリフ -->
+            <div class="flex items-center gap-4 mb-6 bg-white/5 p-4 rounded-2xl border border-white/10 w-full max-w-xs">
+                <img :src="resultIcon" class="w-16 h-16 rounded-xl border-2 border-[#ff2d75] object-cover" alt="CPU Icon">
+                <div class="flex-1 text-left">
+                    <div class="text-sm font-bold-jp text-white leading-relaxed">{{ resultDialogue }}</div>
+                </div>
+            </div>
+
+            <!-- 8. TAP TO NEXT -->
+            <div class="text-white/40 text-xs font-bold-jp tracking-widest animate-pulse mt-4">TAP TO NEXT</div>
         </div>
 
         <!-- --- TITLE SCENE --- -->
@@ -158,7 +224,7 @@
                         脱がせ！<br>
                         <span class="text-6xl text-[#ff2d75]">koikoiポーカー</span>
                     </h1>
-                    <p class="text-sm tracking-widest uppercase opacity-80 mb-12 font-serif-jp">VIP ROOM EXCLUSIVE</p>
+                    <p class="text-sm tracking-widest uppercase opacity-80 mb-12 font-bold">VIP ROOM EXCLUSIVE</p>
                     
                     <button @click="startGame" class="group relative px-12 py-4 bg-transparent border-2 border-[#ff2d75] text-[#ff2d75] font-bold text-xl rounded-full overflow-hidden transition-all hover:bg-[#ff2d75] hover:text-white">
                         <span class="relative z-10">GAME START</span>
@@ -169,19 +235,32 @@
         </transition>
 
         <!-- --- GAME SCENE --- -->
-        <div v-if="scene === 'game'" class="game-container flex flex-col h-screen p-4 bg-[#0f0514]">
-            <!-- Top Bar -->
-            <div class="flex justify-between items-center mb-2 px-2">
-                <div class="text-lg font-black tracking-tighter text-white/80">ROUND {{ round }}</div>
-                <div class="flex gap-3">
-                    <div v-for="(val, key) in playerStacks" :key="key" class="flex items-center gap-1">
-                        <span class="text-lg">{{ getSpecialIcon(key) }}</span>
-                        <span class="text-sm font-bold">:{{ val }}</span>
+        <div v-if="scene === 'game'" class="game-container flex flex-col h-screen p-4 bg-[#0f0514] overflow-y-auto">
+            <!-- 1. Rule Explanation -->
+            <div class="mb-4 p-3 bg-white/5 rounded-2xl border border-white/10 text-left">
+                <div class="text-[10px] font-bold-jp text-white/40 mb-2 tracking-widest uppercase border-b border-white/10 pb-1">[ルール説明]</div>
+                <div class="mt-2 space-y-2 text-[11px] font-bold-jp text-white/80 leading-relaxed">
+                    <p>・3ラウンド終了時点でポイントが多いプレイヤーの勝利です</p>
+                    <div class="bg-white/5 p-2 rounded-lg">
+                        <p class="text-[#ff2d75] font-black mb-1">【役】</p>
+                        <ul class="list-none space-y-1 ml-1">
+                            <li>・連番：1pt：（赤3＋青4＋緑5＋黄色6）のカードを並べる</li>
+                            <li>・同数：2pt：（赤6＋青6＋緑6）のカードを並べる</li>
+                            <li>・同色：3pt：（赤1＋赤3＋赤5＋赤7）のカードを並べる</li>
+                            <li class="text-[10px] text-white/40 pl-2">※それぞれ1枚追加ごとに+1pt</li>
+                        </ul>
                     </div>
+                    <p>・🩷🔑🎁は役の成立に関与しないボーナスポイントカードです</p>
+                    <p class="text-[10px] text-white/40 italic leading-tight">・全てのボーナスカードを使った状態でゲームに勝利するとスペシャルシーンが閲覧できます。</p>
                 </div>
             </div>
 
-            <!-- CPU Section -->
+            <!-- 2. ROUND Title -->
+            <div class="text-center mb-4">
+                <div class="text-2xl font-black tracking-tighter text-white italic drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">ROUND {{ round }}</div>
+            </div>
+
+            <!-- 3. CPU Section -->
             <div class="flex items-start gap-3 mb-4">
                 <div class="relative shrink-0">
                     <img :src="cpuIcon" class="w-20 h-20 rounded-xl border-2 border-[#9d4edd] object-cover shadow-lg" alt="CPU Icon">
@@ -219,25 +298,29 @@
             </div>
 
             <!-- Middle Board (Cards & Dice) -->
-            <div class="flex-1 flex items-center gap-2 py-1">
+            <div class="flex items-center gap-2 py-1 mb-4">
                 <!-- Card Zones -->
                 <div class="flex-1 flex flex-col gap-1">
                     <!-- Face-down Zone -->
                     <div class="flex justify-center gap-1.5">
                         <div v-for="(card, i) in faceDownZone" :key="i"
                              @click="handleFaceDownClick(i)"
-                             class="w-14 h-20 rounded-xl card card-hidden flex items-center justify-center text-xl relative overflow-hidden shadow-lg transition-all"
+                             class="w-14 h-20 rounded-xl card-reveal flex items-center justify-center text-xl relative shadow-lg transition-all"
                              :class="{
                                  'opacity-30 pointer-events-none scale-90': card.taken,
+                                 'is-revealed': card.playerPeeked,
                                  'ring-2 ring-[#9d4edd] shadow-[0_0_15px_rgba(157,78,221,0.5)]': card.cpuPeeked && !card.taken
                              }">
-                            <template v-if="!card.taken">
-                                <span v-if="card.playerPeeked" class="text-2xl">{{ getSpecialIcon(card.type) }}</span>
-                                <span v-else class="opacity-90 text-white font-serif italic drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]">?</span>
-                                <div v-if="card.playerPeeked" class="absolute inset-0 bg-white/5 animate-pulse"></div>
-                                <!-- CPU Peek Indicator -->
-                                <div v-if="card.cpuPeeked && !card.playerPeeked" class="absolute top-1 right-1 text-[10px] opacity-80 animate-bounce">👁️</div>
-                            </template>
+                            <div class="card-inner">
+                                <div class="card-back flex items-center justify-center">
+                                    <span class="opacity-90 text-white font-bold-jp italic drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]">?</span>
+                                    <div v-if="card.cpuPeeked && !card.playerPeeked" class="absolute top-1 right-1 text-[10px] opacity-80 animate-bounce">👁️</div>
+                                </div>
+                                <div class="card-front flex items-center justify-center bg-white/10 backdrop-blur-sm border-2 border-white/20">
+                                    <span class="text-2xl">{{ getSpecialIcon(card.type) }}</span>
+                                    <div class="absolute inset-0 bg-white/5 animate-pulse"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <!-- Public Zone -->
@@ -276,9 +359,23 @@
                 </div>
             </div>
 
+            <!-- Player Stacks & Dice Message -->
+            <div class="flex flex-col items-center gap-3 mb-4">
+                <div class="flex gap-4">
+                    <div v-for="(val, key) in playerStacks" :key="key" class="flex items-center gap-1">
+                        <span class="text-2xl">{{ getSpecialIcon(key) }}</span>
+                        <span class="text-lg font-black text-white">:{{ val }}</span>
+                    </div>
+                </div>
+                <!-- Dice Effect Message -->
+                <div v-if="diceHint" class="px-4 py-1.5 bg-[#ff2d75] text-white text-[11px] font-black italic rounded-full shadow-[0_0_15px_rgba(255,45,117,0.4)] animate-in zoom-in duration-300">
+                    {{ diceHint }}
+                </div>
+            </div>
+
             <!-- Player Hand Zone -->
-            <div class="relative border-2 border-[#ff2d75]/30 rounded-2xl p-3 mt-1 bg-[#ff2d75]/5">
-                <div class="absolute -top-3 left-4 bg-[#0f0514] px-2 text-[10px] font-bold text-[#ff2d75]/60 tracking-widest">score : {{ playerHandScore }}pt</div>
+            <div class="relative border-2 border-[#ff2d75]/30 rounded-2xl p-3 bg-[#ff2d75]/5 mb-4">
+                <div class="absolute -top-3 left-4 bg-[#0f0514] px-2 text-[10px] font-bold text-[#ff2d75] tracking-widest">score : {{ playerHandScore }}pt</div>
                 
                 <!-- Player Speech Bubble -->
                 <transition name="fade">
@@ -311,22 +408,18 @@
                 </div>
             </div>
 
-            <!-- Bottom Controls -->
-            <div class="mt-2 flex flex-col gap-2 border-t border-white/10 pt-2">
-                <div class="text-center text-[11px] font-bold text-white/60 tracking-widest uppercase">累積ポイント: {{ playerPoints }}pt</div>
-            </div>
-
-            <!-- Log Zone -->
-            <div class="mt-2 px-2">
-                <div class="text-[10px] text-white/20 font-bold mb-1 tracking-widest uppercase">Log</div>
-                <div class="h-48 overflow-hidden relative border-l border-white/5 pl-3">
-                    <transition-group name="log" tag="div" class="flex flex-col-reverse">
-                        <div v-for="(log, i) in logs.slice(-8)" :key="i" 
-                             class="text-[15px] py-0.5 font-medium leading-tight"
-                             :class="i === logs.length - 1 ? 'text-[#ff2d75]' : 'opacity-30'">
-                            {{ log }}
-                        </div>
-                    </transition-group>
+            <!-- Footer Info -->
+            <div class="flex flex-col gap-2">
+                <div class="text-center text-xs font-black text-white/40 tracking-widest uppercase">
+                    累積ポイント: {{ playerPoints }} pt
+                </div>
+                
+                <!-- Log -->
+                <div class="bg-black/40 rounded-2xl p-4 h-32 overflow-y-auto border border-white/5 custom-scrollbar">
+                    <div class="text-[10px] font-bold text-white/20 mb-2 tracking-widest uppercase">Log</div>
+                    <div v-for="(log, i) in logs" :key="i" class="text-[11px] font-bold-jp mb-1.5 leading-relaxed" :class="log.type === 'player' ? 'text-[#ff2d75]' : 'text-white/60'">
+                        {{ log.text }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -336,12 +429,12 @@
             <div v-if="scene === 'episode'" class="absolute inset-0 z-[60] bg-black flex flex-col">
                 <div class="flex-1 relative overflow-hidden">
                     <img :src="currentEpisode.image" class="w-full h-full object-cover" alt="Episode Image">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                    <div class="absolute inset-x-0 bottom-0 h-[10%] bg-gradient-to-t from-black to-transparent"></div>
                 </div>
                 <div class="p-6 bg-[#0f0514] border-t border-white/10 min-h-[180px] flex flex-col justify-between">
                     <div>
                         <div class="text-[#ff2d75] font-bold text-sm mb-1">店長</div>
-                        <p class="text-lg font-serif-jp leading-relaxed">{{ currentEpisode.text }}</p>
+                        <p class="text-lg font-bold-jp leading-relaxed">{{ currentEpisode.text }}</p>
                     </div>
                     <button @click="closeEpisode" class="self-end mt-4 px-8 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm font-bold tracking-widest transition-colors">
                         NEXT
@@ -353,16 +446,23 @@
         <!-- --- END SCENE --- -->
         <transition name="fade">
             <div v-if="scene === 'end'" class="absolute inset-0 z-[70] bg-black flex flex-col items-center justify-center p-8 text-center">
-                <img :src="endImage" class="w-full max-w-xs rounded-3xl mb-8 shadow-2xl border-2 border-white/10" alt="End Image">
-                <h2 class="text-4xl font-black italic mb-2 tracking-tighter">{{ endTitle }}</h2>
-                <p class="text-lg font-serif-jp mb-8 opacity-80">{{ endMessage }}</p>
+                <!-- 1. VICTORY (Title) -->
+                <h2 class="text-4xl font-black italic mb-6 tracking-tighter">{{ endTitle }}</h2>
+
+                <!-- 2. 画像 (Image) -->
+                <img :src="currentStatusImage" class="w-full max-w-xs rounded-3xl mb-8 shadow-2xl border-2 border-white/10" alt="End Image">
+
+                <!-- 3. プレイありがとうございました！ 次回作情報はこちら (Message) -->
+                <p class="text-lg font-bold-jp mb-6 opacity-80 whitespace-pre-line">{{ endMessage }}</p>
                 
+                <!-- 4. QRコード (QR Code) -->
                 <div class="bg-white p-4 rounded-2xl mb-8">
                     <div class="w-32 h-32 bg-gray-200 flex items-center justify-center text-black text-[10px]">QR CODE</div>
                 </div>
 
-                <button @click="resetGame" class="px-12 py-4 bg-[#ff2d75] text-white font-bold text-xl rounded-full shadow-lg hover:scale-105 transition-transform">
-                    RETRY
+                <!-- 5. BACK TO TITLE (Button) -->
+                <button @click="resetGame" class="px-8 py-3 bg-white/10 hover:bg-white/20 rounded-full text-sm font-bold tracking-widest transition-colors">
+                    BACK TO TITLE
                 </button>
             </div>
         </transition>
@@ -370,21 +470,10 @@
         <!-- --- AGARI MODAL --- -->
         <div v-if="showAgariModal" class="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
             <div class="bg-[#1a1a2e] w-full p-8 rounded-3xl border-2 border-[#ff2d75] text-center shadow-[0_0_30px_rgba(255,45,117,0.3)]">
-                <h3 class="text-4xl font-black italic text-[#ff2d75] mb-4 tracking-tighter">AGARI!</h3>
-                <div class="text-xl mb-4 font-serif-jp">
-                    役が成立しました。<br>
-                    現在の役：<span class="text-2xl font-bold text-white">{{ currentYakuPoints }} pt</span>
-                </div>
-
-                <!-- Point Breakdown -->
-                <div v-if="currentYakuBreakdown" class="bg-white/5 rounded-xl p-3 w-full max-w-[200px] mx-auto text-[11px] font-bold flex flex-col gap-1 mb-6 border border-white/10">
-                    <div class="flex justify-between opacity-60"><span>連番</span><span>{{ currentYakuBreakdown.consecutive }} pt</span></div>
-                    <div class="flex justify-between opacity-60"><span>同色</span><span>{{ currentYakuBreakdown.sameColor }} pt</span></div>
-                    <div class="flex justify-between opacity-60"><span>同数</span><span>{{ currentYakuBreakdown.sameNum }} pt</span></div>
-                    <div class="flex justify-between text-[#ff2d75]"><span>ボーナス</span><span>+{{ currentYakuBreakdown.bonus }} pt</span></div>
-                </div>
-
-                <!-- Hand Display in Modal -->
+                <!-- 1. 役が成立しました -->
+                <h3 class="text-3xl font-black italic text-[#ff2d75] mb-6 tracking-tighter">役が成立しました！</h3>
+                
+                <!-- 2. 手札 -->
                 <div class="flex flex-wrap justify-center gap-1 mb-6">
                     <div v-for="(card, i) in playerHand" :key="i" 
                          class="w-10 h-14 rounded-md flex flex-col items-center justify-center text-xs font-bold border-2 shadow-md"
@@ -398,8 +487,33 @@
                     </div>
                 </div>
 
-                <div class="text-sm font-bold text-white/60 mb-4">累積ポイント: {{ playerPoints }}pt</div>
+                <!-- 3. 現在の役pt -->
+                <div class="text-2xl font-bold text-white mb-2">
+                    現在の役：{{ currentYakuPoints }} pt
+                </div>
 
+                <!-- 4. 連番、同色、同数、ボーナスの内訳 -->
+                <div v-if="currentYakuBreakdown" class="bg-white/5 rounded-xl p-3 w-full max-w-[200px] mx-auto text-[11px] font-bold flex flex-col gap-1 mb-4 border border-white/10">
+                    <div class="flex justify-between opacity-60"><span>連番</span><span>{{ currentYakuBreakdown.consecutive }} pt</span></div>
+                    <div class="flex justify-between opacity-60"><span>同色</span><span>{{ currentYakuBreakdown.sameColor }} pt</span></div>
+                    <div class="flex justify-between opacity-60"><span>同数</span><span>{{ currentYakuBreakdown.sameNum }} pt</span></div>
+                    <div class="flex justify-between text-[#ff2d75]"><span>ボーナス</span><span>+{{ currentYakuBreakdown.bonus }} pt</span></div>
+                </div>
+
+                <!-- 5. 現在の累積 -->
+                <div class="mb-6 text-sm text-white/60">
+                    現在の累積：{{ playerPoints }} pt → <span class="text-white font-bold">{{ playerPoints + currentYakuPoints }} pt</span>
+                </div>
+
+                <!-- 6. CPUのセリフ -->
+                <div class="flex items-center gap-4 mb-6 bg-white/5 p-4 rounded-2xl border border-white/10 text-left">
+                    <img src="https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/icon_panic.png" class="w-16 h-16 rounded-xl border-2 border-[#ff2d75] object-cover" alt="CPU Icon">
+                    <div class="flex-1">
+                        <div class="text-sm font-bold-jp text-white leading-relaxed">上がる？上がらないわよね？</div>
+                    </div>
+                </div>
+
+                <!-- 7. 上がりボタン / 8. 継続ボタン -->
                 <div class="flex flex-col gap-3">
                     <button @click="confirmAgari" class="w-full py-4 bg-[#ff2d75] text-white font-bold rounded-2xl text-lg hover:opacity-90 transition-opacity">
                         上がり (Round End)
@@ -423,6 +537,7 @@
                 const turn = ref('player');
                 const dice = ref(null);
                 const isRolling = ref(false);
+                const isBlackout = ref(false);
                 const canRoll = ref(true);
                 const logs = reactive([]);
                 
@@ -438,6 +553,14 @@
                 const cpuHand = ref([]);
                 
                 const episodeFlags = reactive({ ep2: false, ep3: false, ep4: false, epsp: false });
+                const currentStatusImage = computed(() => {
+                    const baseUrl = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/';
+                    if (episodeFlags.epsp) return baseUrl + 'epsp.png';
+                    if (episodeFlags.ep4) return baseUrl + 'ep04.png';
+                    if (episodeFlags.ep3) return baseUrl + 'ep03.png';
+                    if (episodeFlags.ep2) return baseUrl + 'ep02.png';
+                    return baseUrl + 'ep01.png';
+                });
                 const currentEpisode = reactive({ image: '', text: '', nextScene: '' });
                 const episodeQueue = ref([]);
                 const currentYakuPoints = ref(0);
@@ -451,6 +574,19 @@
                 const resultPoints = ref(0);
                 const resultBreakdown = ref(null);
                 const resultNextStep = ref(null);
+                const resultDialogue = ref('');
+                const resultIconState = ref('normal');
+                const resultIcon = computed(() => {
+                    const baseUrl = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/';
+                    const icons = {
+                        df: 'icon_df.png',
+                        angry: 'icon_angry.png',
+                        panic: 'icon_panic.png',
+                        blush: 'icon_blush.png',
+                        normal: 'icon_df.png'
+                    };
+                    return baseUrl + (icons[resultIconState.value] || icons.df);
+                });
                 const cpuDialogue = ref('さて、始めましょうか');
                 const playerDialogue = ref('');
                 const cpuIconState = ref('df');
@@ -469,11 +605,21 @@
                 const endImage = ref('');
                 const endTitle = ref('');
                 const endMessage = ref('');
+                const hasSpecialEnding = ref(false);
 
                 // --- Game Logic ---
 
-                const addLog = (msg) => {
-                    logs.push(msg);
+                const getCardName = (card) => {
+                    if (card.type) {
+                        const names = { gift: 'プレゼントカード', key: 'キーカード', heart: 'ハートカード', suka: '外れカード', trap: 'トラップカード' };
+                        return names[card.type] || '特殊カード';
+                    }
+                    return `${getCardColorName(card.color)}${card.num}`;
+                };
+
+                const addLog = (text, type = 'system') => {
+                    logs.unshift({ text, type });
+                    if (logs.length > 50) logs.pop();
                 };
 
                 const getCardColorName = (color) => {
@@ -540,7 +686,7 @@
                         { type: 'trap', bonus: 0 }
                     ];
                     faceDownZone.value = specials.sort(() => Math.random() - 0.5).map(s => ({
-                        ...s, playerPeeked: false, cpuPeeked: false, taken: false
+                        ...s, playerPeeked: false, cpuPeeked: false, taken: false, isBeingTaken: false
                     }));
                     
                     turn.value = 'player';
@@ -548,7 +694,7 @@
                     canRoll.value = true;
                     canAgari.value = false;
                     cpuDialogue.value = 'さて、始めましょうか';
-                    addLog(`ラウンド ${round.value} 開始！先行はあなたです。`);
+                    addLog(`ラウンド ${round.value} 開始！先行はあなたです。`, 'system');
                     cpuIconState.value = 'df';
                 };
 
@@ -583,7 +729,7 @@
                     setTimeout(() => {
                         isRolling.value = false;
                         dice.value = Math.floor(Math.random() * 6) + 1;
-                        addLog(`${turn.value === 'player' ? 'あなた' : 'CPU'}のダイス：${dice.value}`);
+                        addLog(`${turn.value === 'player' ? 'あなた' : 'CPU'}のダイス：${dice.value}`, turn.value);
                         
                         if (turn.value === 'cpu') {
                             setTimeout(cpuAction, 1000);
@@ -599,7 +745,7 @@
                     setTimeout(() => {
                         isRolling.value = false;
                         dice.value = 6;
-                        addLog(`${turn.value === 'player' ? 'あなた' : 'CPU'}のダイス：${dice.value} (DEBUG)`);
+                        addLog(`${turn.value === 'player' ? 'あなた' : 'CPU'}のダイス：${dice.value} (DEBUG)`, turn.value);
                         
                         if (turn.value === 'cpu') {
                             setTimeout(cpuAction, 1000);
@@ -614,7 +760,7 @@
                     const card = publicZone.value[index];
                     playerHand.value.push(card);
                     publicZone.value[index] = deck.value.length > 0 ? deck.value.pop() : createDeck().pop();
-                    addLog(`${getCardColorName(card.color)}の${card.num}を手札に加えました。`);
+                    addLog(`${getCardColorName(card.color)}の${card.num}を手札に加えました。`, 'player');
                     
                     checkAgari('player');
                 };
@@ -624,7 +770,7 @@
                     
                     const stolen = cpuHand.value.splice(index, 1)[0];
                     playerHand.value.push(stolen);
-                    addLog(`CPUの手札から ${getCardColorName(stolen.color)}${stolen.num} を奪いました！`);
+                    addLog(`CPUの手札から ${getCardName(stolen)} を奪いました！`, 'player');
                     cpuDialogue.value = 'ちょっと！私のカード取らないでよ！';
                     cpuIconState.value = 'angry';
                     checkAgari('player');
@@ -637,17 +783,27 @@
 
                     if (dice.value === 1) {
                         card.playerPeeked = true;
-                        addLog(`伏せ札を確認しました：${getSpecialIcon(card.type)}`);
+                        addLog(`伏せ札を確認しました：${getCardName(card)}`, 'player');
                         endTurn();
                     } else if (dice.value >= 4) {
-                        takeFaceDown(index, 'player');
+                        if (card.taken || card.isBeingTaken) return;
+                        card.isBeingTaken = true;
+                        card.playerPeeked = true; // Trigger reveal animation
+                        setTimeout(() => {
+                            takeFaceDown(index, 'player');
+                        }, 800);
                     }
                 };
 
                 const takeFaceDown = (index, actor) => {
                     const card = faceDownZone.value[index];
                     card.taken = true;
-                    addLog(`${actor === 'player' ? 'あなた' : 'CPU'}は伏せ札 ${getSpecialIcon(card.type)} を獲得！`);
+                    
+                    if (card.type === 'suka') {
+                        addLog(`伏せ札は外れでした。`, 'player');
+                    } else {
+                        addLog(`${actor === 'player' ? 'あなた' : 'CPU'}は ${getCardName(card)} を獲得！`, actor);
+                    }
                     
                     if (card.type === 'trap') {
                         const hand = actor === 'player' ? playerHand.value : cpuHand.value;
@@ -657,20 +813,24 @@
                             const idx = hand.indexOf(target);
                             hand.splice(idx, 1);
                             deck.value.push(target);
-                            addLog(`トラップ！手札の ${getCardColorName(target.color)}${target.num} が山札に戻りました。`);
+                            addLog(`トラップ！手札の ${getCardName(target)} が山札に戻りました。`, actor);
                         }
                     } else if (card.type !== 'suka') {
                         const hand = actor === 'player' ? playerHand.value : cpuHand.value;
                         hand.push({ type: card.type });
-                        const stacks = actor === 'player' ? playerStacks : cpuStacks;
-                        stacks[card.type]++;
                     }
                     
                     checkAgari(actor);
                 };
 
-                const checkYaku = (hand, stacks) => {
+                const checkYaku = (hand) => {
                     const normalCards = hand.filter(c => !c.type);
+                    const specialCards = hand.filter(c => c.type);
+                    const stacks = {
+                        gift: specialCards.filter(c => c.type === 'gift').length,
+                        key: specialCards.filter(c => c.type === 'key').length,
+                        heart: specialCards.filter(c => c.type === 'heart').length,
+                    };
                     const breakdown = { sameNum: 0, sameColor: 0, consecutive: 0, bonus: 0 };
                     
                     // 1. Same Number
@@ -717,8 +877,7 @@
 
                 const checkAgari = (actor) => {
                     const hand = actor === 'player' ? playerHand.value : cpuHand.value;
-                    const stacks = actor === 'player' ? playerStacks : cpuStacks;
-                    const { total, breakdown } = checkYaku(hand, stacks);
+                    const { total, breakdown } = checkYaku(hand);
                     
                     if (total > 0) {
                         if (actor === 'player') {
@@ -726,14 +885,16 @@
                             currentYakuBreakdown.value = breakdown;
                             canAgari.value = true;
                             showAgariModal.value = true;
-                            cpuDialogue.value = '上がる？あがらないよね？';
+                            // Set Agari Choice Dialogue
+                            cpuDialogue.value = '上がる？上がらないわよね？';
+                            cpuIconState.value = 'panic';
                         } else {
                             // CPU Logic
                             const shouldAgari = cpuShouldAgari(total);
                             if (shouldAgari) {
                                 confirmAgari('cpu');
                             } else {
-                                addLog("CPUは「継続」を選択しました。");
+                                addLog("CPUは「継続」を選択しました。", 'cpu');
                                 endTurn();
                             }
                         }
@@ -763,8 +924,7 @@
                     
                     showAgariModal.value = false;
                     const hand = winnerStr === 'player' ? playerHand.value : cpuHand.value;
-                    const stacks = winnerStr === 'player' ? playerStacks : cpuStacks;
-                    const { total, breakdown } = checkYaku(hand, stacks);
+                    const { total, breakdown } = checkYaku(hand);
                     
                     // Show Result Modal
                     resultWinner.value = winnerStr;
@@ -775,22 +935,54 @@
 
                     if (winnerStr === 'player') {
                         playerPoints.value += total;
-                        addLog(`あなたが上がり！ ${total} pt 獲得。`);
-                        playerDialogue.value = 'よし、上がりだ！';
-                        setTimeout(() => { playerDialogue.value = ''; }, 3000);
+                        
+                        // Priority-based Result Dialogue
+                        if (round.value === 3 && playerPoints.value >= 11) {
+                            resultDialogue.value = "完敗だわ…好きにしなさいよ…";
+                            resultIconState.value = "blush";
+                        } else if (round.value === 3 && playerPoints.value <= 10) {
+                            resultDialogue.value = "私が負けるなんて…";
+                            resultIconState.value = "blush";
+                        } else if (total >= 5) {
+                            resultDialogue.value = "高すぎでしょ！少しは手加減しなさいよ！";
+                            resultIconState.value = "panic";
+                        } else if (total <= 2) {
+                            resultDialogue.value = "そんな低い点数で…";
+                            resultIconState.value = "angry";
+                        } else {
+                            resultDialogue.value = "ぐぐ、次こそは…";
+                            resultIconState.value = "angry";
+                        }
+
+                        // Increment stacks on victory
+                        hand.forEach(c => {
+                            if (c.type && playerStacks[c.type] !== undefined) {
+                                playerStacks[c.type]++;
+                            }
+                        });
+                        addLog(`あなたが上がり！ ${total} pt 獲得。`, 'player');
+                        playerDialogue.value = ''; 
                         canAgari.value = false;
-                        cpuDialogue.value = '負けちゃった…アンタ、なかなかやるじゃない。';
-                        cpuIconState.value = 'panic';
+                        cpuDialogue.value = resultDialogue.value;
+                        cpuIconState.value = resultIconState.value;
                     } else {
                         cpuPoints.value += total;
-                        addLog(`CPUが上がり！ ${total} pt 獲得。`);
-                        cpuDialogue.value = 'ふふ、私の勝ちね。約束通り、脱いでもらうわよ？';
-                        cpuIconState.value = 'blush';
+                        resultDialogue.value = 'この程度かい？もう少し手加減した方がいいかな？';
+                        resultIconState.value = 'df';
+                        
+                        // Increment stacks on victory
+                        hand.forEach(c => {
+                            if (c.type && cpuStacks[c.type] !== undefined) {
+                                cpuStacks[c.type]++;
+                            }
+                        });
+                        addLog(`CPUが上がり！ ${total} pt 獲得。`, 'cpu');
+                        cpuDialogue.value = resultDialogue.value;
+                        cpuIconState.value = resultIconState.value;
                     }
                     
                     // Prepare next step
                     resultNextStep.value = () => {
-                        showResultModal.value = false;
                         let epTriggered = false;
                         if (winnerStr === 'player') {
                             // Episode 2 check
@@ -814,8 +1006,21 @@
                                 epTriggered = true;
                             }
                         }
-                        if (!epTriggered) {
-                            nextRound();
+                        
+                        if (epTriggered) {
+                            showResultModal.value = false;
+                        } else {
+                            // If it's the last round, we need a blackout transition to endGame/episodes
+                            if (round.value >= 3) {
+                                isBlackout.value = true;
+                                setTimeout(() => {
+                                    showResultModal.value = false;
+                                    nextRound(); // This will call endGame
+                                }, 400);
+                            } else {
+                                showResultModal.value = false;
+                                nextRound();
+                            }
                         }
                     };
                 };
@@ -830,7 +1035,7 @@
                 const continueGame = () => {
                     canAgari.value = false;
                     showAgariModal.value = false;
-                    addLog("あなたは「継続」を選択しました。");
+                    addLog("あなたは「継続」を選択しました。", 'player');
                     endTurn();
                 };
 
@@ -855,7 +1060,7 @@
                         if (untaken.length > 0) {
                             const target = untaken[Math.floor(Math.random() * untaken.length)];
                             target.cpuPeeked = true;
-                            addLog("CPUが伏せ札を確認しました。");
+                            addLog("CPUが伏せ札を確認しました。", 'cpu');
                         }
                         endTurn();
                     } else if (d === 2 || d === 3) {
@@ -896,7 +1101,7 @@
 
                             const stolen = playerHand.value.splice(bestStealIndex, 1)[0];
                             cpuHand.value.push(stolen);
-                            addLog(`CPUがあなたの手札から ${getCardColorName(stolen.color)}${stolen.num} を奪いました！`);
+                            addLog(`CPUがあなたの手札から ${getCardColorName(stolen.color)}${stolen.num} を奪いました！`, 'cpu');
                             cpuDialogue.value = 'ふふ、そのカード、私が有効に使わせてもらうわね。';
                             cpuIconState.value = 'df';
                             checkAgari('cpu');
@@ -933,7 +1138,7 @@
                     }
                     
                     publicZone.value[bestIndex] = deck.value.pop();
-                    addLog(`CPUが公開ゾーンから ${getCardColorName(card.color)}${card.num} を取りました。`);
+                    addLog(`CPUが公開ゾーンから ${getCardColorName(card.color)}${card.num} を取りました。`, 'cpu');
                     checkAgari('cpu');
                 };
 
@@ -948,91 +1153,152 @@
                 };
 
                 const endGame = () => {
-                    scene.value = 'end';
-                    if (playerPoints.value > cpuPoints.value) {
-                        endTitle.value = "VICTORY";
-                        endMessage.value = "私の負けね…";
-                        endImage.value = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep04.png';
-                        
-                        // Special checks
-                        const allStacks = playerStacks.gift >= 1 && playerStacks.key >= 1 && playerStacks.heart >= 1;
-                        if (allStacks) {
-                            playEpisode({
-                                image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/epsp.png',
-                                text: '……ねえ、これっぽっちも容赦してくれなかったんだから、私をこんな格好にさせた責任、ちゃんと最後まで取ってくれるんでしょ？',
-                                nextScene: 'end'
-                            });
-                        } else if (playerPoints.value >= 11) {
-                            playEpisode({
-                                image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep04.png',
-                                text: 'はい、私の負けよ！これで満足？',
-                                nextScene: 'end'
-                            });
-                        }
-                    } else if (playerPoints.value < cpuPoints.value) {
-                        endTitle.value = "DEFEAT";
-                        endMessage.value = "私の勝ち〜！";
-                        
-                        if (playerPoints.value <= 10) {
-                            if (episodeFlags.ep3) {
-                                endImage.value = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep03.png';
-                            } else if (episodeFlags.ep2) {
-                                endImage.value = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep02.png';
-                            } else {
-                                endImage.value = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep01.png';
+                    hasSpecialEnding.value = false;
+
+                    const setEndContent = () => {
+                        if (playerPoints.value > cpuPoints.value) {
+                            endTitle.value = "VICTORY";
+                            endMessage.value = "プレイありがとうございました！\n次回作情報はこちら";
+                            
+                            // Priority 1: Victory AND all 3 stacks
+                            const allStacks = playerStacks.gift >= 1 && playerStacks.key >= 1 && playerStacks.heart >= 1;
+                            
+                            if (allStacks) {
+                                // Play ep04
+                                playEpisode({
+                                    image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep04.png',
+                                    text: 'はい、私の負けよ！これで満足？',
+                                    nextScene: 'end'
+                                });
+                                // Play epsp
+                                playEpisode({
+                                    image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/epsp.png',
+                                    text: '……ねえ、これっぽっちも容赦してくれなかったんだから、私をこんな格好にさせた責任、ちゃんと最後まで取ってくれるんでしょ？',
+                                    nextScene: 'end'
+                                });
+                                return true; // Episode triggered
+                            } 
+                            // Priority 2: Victory AND 11pt+
+                            else if (playerPoints.value >= 11) {
+                                playEpisode({
+                                    image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep04.png',
+                                    text: 'はい、私の負けよ！これで満足？',
+                                    nextScene: 'end'
+                                });
+                                return true; // Episode triggered
                             }
+                        } else if (playerPoints.value < cpuPoints.value) {
+                            endTitle.value = "DEFEAT";
+                            endMessage.value = "私の勝ち〜！\n\nプレイありがとうございました！\n次回作情報はこちら";
                         } else {
-                            endImage.value = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/icon_df.png';
+                            endTitle.value = "DRAW";
+                            endMessage.value = "今日は引き分けね。\n\nプレイありがとうございました！\n次回作情報はこちら";
+                        }
+                        return false; // No episode triggered
+                    };
+
+                    const epTriggered = setEndContent();
+                    if (epTriggered) {
+                        if (isBlackout.value) {
+                            showNextEpisode(true);
+                        } else {
+                            showNextEpisode();
                         }
                     } else {
-                        endTitle.value = "DRAW";
-                        endMessage.value = "今日は引き分けね。";
-                        
-                        if (playerPoints.value <= 10) {
-                            if (episodeFlags.ep3) {
-                                endImage.value = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep03.png';
-                            } else if (episodeFlags.ep2) {
-                                endImage.value = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep02.png';
-                            } else {
-                                endImage.value = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep01.png';
-                            }
+                        if (isBlackout.value) {
+                            // Already in blackout (likely from closeEpisode)
+                            scene.value = 'end';
+                            setTimeout(() => {
+                                isBlackout.value = false;
+                            }, 50);
                         } else {
-                            endImage.value = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/icon_df.png';
+                            isBlackout.value = true;
+                            setTimeout(() => {
+                                scene.value = 'end';
+                                setTimeout(() => {
+                                    isBlackout.value = false;
+                                }, 50);
+                            }, 400);
                         }
                     }
                 };
 
+                const playSpecialEnding = () => {
+                    playEpisode({
+                        image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/epsp.png',
+                        text: '……ねえ、これっぽっちも容赦してくれなかったんだから、私をこんな格好にさせた責任、ちゃんと最後まで取ってくれるんでしょ？',
+                        nextScene: 'end'
+                    });
+                };
+
                 const playEpisode = (ep) => {
+                    // Update flags based on image
+                    if (ep.image.includes('ep02')) episodeFlags.ep2 = true;
+                    if (ep.image.includes('ep03')) episodeFlags.ep3 = true;
+                    if (ep.image.includes('ep04')) episodeFlags.ep4 = true;
+                    if (ep.image.includes('epsp')) episodeFlags.epsp = true;
+
                     episodeQueue.value.push(ep);
-                    if (scene.value !== 'episode') {
+                    if (scene.value !== 'episode' && !isBlackout.value) {
                         showNextEpisode();
                     }
                 };
 
-                const showNextEpisode = () => {
+                const showNextEpisode = (alreadyBlackout = false) => {
                     if (episodeQueue.value.length > 0) {
-                        const ep = episodeQueue.value.shift();
-                        Object.assign(currentEpisode, ep);
-                        scene.value = 'episode';
+                        if (!alreadyBlackout) isBlackout.value = true;
+                        
+                        const transitionTime = alreadyBlackout ? 0 : 400;
+                        
+                        setTimeout(() => {
+                            const ep = episodeQueue.value.shift();
+                            Object.assign(currentEpisode, ep);
+                            endImage.value = ep.image;
+                            
+                            // Ensure all modals are closed
+                            showResultModal.value = false;
+                            showAgariModal.value = false;
+                            
+                            scene.value = 'episode';
+                            
+                            // Buffer to ensure scene is rendered before fade-in
+                            setTimeout(() => {
+                                isBlackout.value = false;
+                            }, 50);
+                        }, transitionTime);
                     }
                 };
 
                 const closeEpisode = () => {
-                    if (episodeQueue.value.length > 0) {
-                        showNextEpisode();
-                    } else {
-                        const next = currentEpisode.nextScene;
-                        scene.value = next === 'nextRound' ? 'game' : next;
-                        if (next === 'nextRound') {
-                            nextRound();
-                        } else if (next === 'game') {
-                            triggerRoundCutin();
+                    isBlackout.value = true;
+                    setTimeout(() => {
+                        if (episodeQueue.value.length > 0) {
+                            showNextEpisode(true);
+                        } else {
+                            const next = currentEpisode.nextScene;
+                            if (next === 'nextRound') {
+                                scene.value = 'game';
+                                nextRound();
+                            } else {
+                                scene.value = next;
+                            }
+                            
+                            // Buffer to ensure scene is rendered before fade-in
+                            setTimeout(() => {
+                                isBlackout.value = false;
+                            }, 50);
                         }
-                    }
+                    }, 400);
                 };
 
                 const resetGame = () => {
-                    scene.value = 'title';
+                    isBlackout.value = true;
+                    setTimeout(() => {
+                        scene.value = 'title';
+                        setTimeout(() => {
+                            isBlackout.value = false;
+                        }, 100);
+                    }, 400);
                 };
 
                 const cpuHandScore = computed(() => checkYaku(cpuHand.value, cpuStacks).total);
@@ -1043,14 +1309,16 @@
                     playerPoints, cpuPoints, playerStacks, cpuStacks,
                     publicZone, faceDownZone, playerHand, cpuHand,
                     cpuIcon, cpuIconState, cpuDialogue, playerDialogue,
+                    resultDialogue, resultIcon, resultIconState,
+                    episodeFlags, currentStatusImage,
                     canAgari, showAgariModal, currentYakuPoints, currentYakuBreakdown,
                     showResultModal, showRoundCutin, resultWinner, resultHand, resultPoints, resultBreakdown,
-                    diceHint,
+                    diceHint, isBlackout, hasSpecialEnding,
                     cpuHandScore, playerHandScore,
                     currentEpisode, endImage, endTitle, endMessage,
                     startGame, rollDice, rollDice6, handlePublicClick, handleFaceDownClick, handleCpuHandClick,
-                    confirmAgari, continueGame, closeEpisode, resetGame, handleResultClick,
-                    getCardClass, getCardColorName, getSpecialIcon
+                    confirmAgari, continueGame, closeEpisode, resetGame, handleResultClick, playSpecialEnding,
+                    getCardClass, getCardColorName, getSpecialIcon, getCardName
                 };
             }
         }).mount('#app');
