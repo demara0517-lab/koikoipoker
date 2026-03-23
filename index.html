@@ -154,6 +154,15 @@
             </div>
         </div>
 
+        <!-- Steal Cut-in -->
+        <div v-if="showStealCutin" class="absolute inset-0 z-[200] flex items-center justify-center pointer-events-none overflow-hidden">
+            <div class="cutin-band w-[150%] h-24 bg-[#ff2d75] absolute flex items-center justify-center shadow-[0_0_50px_rgba(255,45,117,0.5)]">
+                <div class="text-6xl font-black italic text-white tracking-tighter skew-x-[20deg]">
+                    STEAL!!
+                </div>
+            </div>
+        </div>
+
         <!-- Blackout Overlay -->
         <div class="blackout-overlay" :class="{ active: isBlackout }"></div>
 
@@ -237,34 +246,32 @@
         <!-- --- GAME SCENE --- -->
         <div v-if="scene === 'game'" class="game-container flex flex-col h-screen p-4 bg-[#0f0514] overflow-y-auto">
             <!-- 1. Rule Explanation -->
-            <div class="mb-4 p-3 bg-white/5 rounded-2xl border border-white/10 text-left">
-                <div class="text-[10px] font-bold-jp text-white/40 mb-2 tracking-widest uppercase border-b border-white/10 pb-1">[ルール説明]</div>
-                <div class="mt-2 space-y-2 text-[11px] font-bold-jp text-white/80 leading-relaxed">
+            <div class="mb-4 p-3 bg-white/5 rounded-2xl border border-white/10 text-left cursor-pointer hover:bg-white/10 transition-colors" @click="toggleRules">
+                <div class="flex justify-between items-center border-b border-white/10 pb-1">
+                    <div class="text-[10px] font-bold-jp text-white/40 tracking-widest uppercase">[ルール説明]</div>
+                    <div class="text-white/40 text-[10px]">{{ showRules ? '▲ 閉じる' : '▼ 開く' }}</div>
+                </div>
+                <div v-show="showRules" class="mt-2 space-y-2 text-[11px] font-bold-jp text-white/80 leading-relaxed transition-all duration-300">
                     <p>・3ラウンド終了時点でポイントが多いプレイヤーの勝利です</p>
                     <div class="bg-white/5 p-2 rounded-lg">
                         <p class="text-[#ff2d75] font-black mb-1">【役】</p>
                         <ul class="list-none space-y-1 ml-1">
-                            <li>・連番：1pt：（赤3＋青4＋緑5＋黄色6）のカードを並べる</li>
-                            <li>・同数：2pt：（赤6＋青6＋緑6）のカードを並べる</li>
-                            <li>・同色：3pt：（赤1＋赤3＋赤5＋赤7）のカードを並べる</li>
+                            <li>・連番：1pt：連続した数字のカードが4枚以上</li>
+                            <li>・同数：2pt：同じ数字のカードが3枚以上</li>
+                            <li>・同色：3pt：同じ色のカードが4枚以上</li>
                             <li class="text-[10px] text-white/40 pl-2">※それぞれ1枚追加ごとに+1pt</li>
                         </ul>
                     </div>
-                    <p>・🩷🔑🎁は役の成立に関与しないボーナスポイントカードです</p>
+                    <p>・🩷🔑🎁は役の成立に関与しないボーナスカードです</p>
                     <p class="text-[10px] text-white/40 italic leading-tight">・全てのボーナスカードを使った状態でゲームに勝利するとスペシャルシーンが閲覧できます。</p>
                 </div>
             </div>
 
-            <!-- 2. ROUND Title -->
-            <div class="text-center mb-4">
-                <div class="text-2xl font-black tracking-tighter text-white italic drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">ROUND {{ round }}</div>
-            </div>
-
-            <!-- 3. CPU Section -->
+            <!-- 2. CPU Section -->
             <div class="flex items-start gap-3 mb-4">
                 <div class="relative shrink-0">
                     <img :src="cpuIcon" class="w-20 h-20 rounded-xl border-2 border-[#9d4edd] object-cover shadow-lg" alt="CPU Icon">
-                    <div class="absolute -bottom-2 -right-2 bg-[#9d4edd] text-[10px] px-2 py-0.5 rounded-full font-bold shadow-md">CPU</div>
+                    <div class="absolute -bottom-2 -right-2 bg-[#9d4edd] text-[10px] px-2 py-0.5 rounded-full font-bold shadow-md">{{ gameData?.cpu.name || 'CPU' }}</div>
                 </div>
                 <div class="flex-1">
                     <div class="flex justify-between items-end mb-1">
@@ -336,7 +343,8 @@
                 </div>
 
                 <!-- Dice Button -->
-                <div class="shrink-0 flex flex-col gap-2">
+                <div class="shrink-0 flex flex-col gap-2 items-center">
+                    <div class="text-lg font-black tracking-tighter text-white italic drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] mb-1">ROUND {{ round }}</div>
                     <div class="w-20 h-20 flex flex-col items-center justify-center bg-[#ff2d75] rounded-3xl shadow-[0_10px_20px_rgba(255,45,117,0.4)] cursor-pointer active:translate-y-1 transition-all"
                          @click="rollDice" 
                          :class="{
@@ -361,10 +369,25 @@
 
             <!-- Player Stacks & Dice Message -->
             <div class="flex flex-col items-center gap-3 mb-4">
-                <div class="flex gap-4">
-                    <div v-for="(val, key) in playerStacks" :key="key" class="flex items-center gap-1">
-                        <span class="text-2xl">{{ getSpecialIcon(key) }}</span>
-                        <span class="text-lg font-black text-white">:{{ val }}</span>
+                <div class="flex items-center gap-6 bg-white/5 px-6 py-2 rounded-2xl border border-white/10">
+                    <div class="flex gap-4">
+                        <div class="flex items-center gap-1">
+                            <span class="text-2xl">{{ getSpecialIcon('heart') }}</span>
+                            <span class="text-lg font-black text-white">:{{ playerStacks.heart }}</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-2xl">{{ getSpecialIcon('key') }}</span>
+                            <span class="text-lg font-black text-white">:{{ playerStacks.key }}</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-2xl">{{ getSpecialIcon('gift') }}</span>
+                            <span class="text-lg font-black text-white">:{{ playerStacks.gift }}</span>
+                        </div>
+                    </div>
+                    <div class="h-6 w-px bg-white/20"></div>
+                    <div class="text-right">
+                        <div class="text-[9px] font-bold text-white/40 tracking-widest uppercase leading-none mb-1">Total</div>
+                        <div class="text-lg font-black text-[#ff2d75] leading-none">{{ playerPoints }}<span class="text-[10px] ml-0.5">pt</span></div>
                     </div>
                 </div>
                 <!-- Dice Effect Message -->
@@ -387,13 +410,6 @@
                     </div>
                 </transition>
 
-                <!-- Dice Hint -->
-                <div v-if="dice && turn === 'player'" class="absolute -top-8 left-0 right-0 text-center z-10">
-                    <span class="bg-[#ff2d75] text-white text-[11px] font-bold px-4 py-1.5 rounded-full shadow-lg animate-bounce inline-block">
-                        {{ diceHint }}
-                    </span>
-                </div>
-
                 <div class="flex flex-wrap gap-1 min-h-[56px]">
                     <div v-for="(card, i) in playerHand" :key="i" 
                          class="w-10 h-14 rounded-md flex flex-col items-center justify-center text-sm font-bold border-2 shadow-md"
@@ -410,10 +426,6 @@
 
             <!-- Footer Info -->
             <div class="flex flex-col gap-2">
-                <div class="text-center text-xs font-black text-white/40 tracking-widest uppercase">
-                    累積ポイント: {{ playerPoints }} pt
-                </div>
-                
                 <!-- Log -->
                 <div class="bg-black/40 rounded-2xl p-4 h-32 overflow-y-auto border border-white/5 custom-scrollbar">
                     <div class="text-[10px] font-bold text-white/20 mb-2 tracking-widest uppercase">Log</div>
@@ -546,6 +558,17 @@
                 const playerStacks = reactive({ gift: 0, key: 0, heart: 0 });
                 const cpuStacks = reactive({ gift: 0, key: 0, heart: 0 });
                 
+                const gameData = ref(null);
+
+                onMounted(async () => {
+                    try {
+                        const response = await fetch('./game-data.json');
+                        gameData.value = await response.json();
+                    } catch (e) {
+                        console.error("Failed to load game data", e);
+                    }
+                });
+
                 const deck = ref([]);
                 const publicZone = ref([]);
                 const faceDownZone = ref([]);
@@ -554,12 +577,14 @@
                 
                 const episodeFlags = reactive({ ep2: false, ep3: false, ep4: false, epsp: false });
                 const currentStatusImage = computed(() => {
-                    const baseUrl = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/';
-                    if (episodeFlags.epsp) return baseUrl + 'epsp.png';
-                    if (episodeFlags.ep4) return baseUrl + 'ep04.png';
-                    if (episodeFlags.ep3) return baseUrl + 'ep03.png';
-                    if (episodeFlags.ep2) return baseUrl + 'ep02.png';
-                    return baseUrl + 'ep01.png';
+                    if (!gameData.value) return '';
+                    const baseUrl = gameData.value.images.baseUrl;
+                    const eps = gameData.value.images.episodes;
+                    if (episodeFlags.epsp) return baseUrl + eps.epsp;
+                    if (episodeFlags.ep4) return baseUrl + eps.ep04;
+                    if (episodeFlags.ep3) return baseUrl + eps.ep03;
+                    if (episodeFlags.ep2) return baseUrl + eps.ep02;
+                    return baseUrl + eps.ep01;
                 });
                 const currentEpisode = reactive({ image: '', text: '', nextScene: '' });
                 const episodeQueue = ref([]);
@@ -569,6 +594,11 @@
                 const showAgariModal = ref(false);
                 const showResultModal = ref(false);
                 const showRoundCutin = ref(false);
+                const showStealCutin = ref(false);
+                const showRules = ref(false);
+                const toggleRules = () => {
+                    showRules.value = !showRules.value;
+                };
                 const resultWinner = ref('');
                 const resultHand = ref([]);
                 const resultPoints = ref(0);
@@ -577,14 +607,9 @@
                 const resultDialogue = ref('');
                 const resultIconState = ref('normal');
                 const resultIcon = computed(() => {
-                    const baseUrl = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/';
-                    const icons = {
-                        df: 'icon_df.png',
-                        angry: 'icon_angry.png',
-                        panic: 'icon_panic.png',
-                        blush: 'icon_blush.png',
-                        normal: 'icon_df.png'
-                    };
+                    if (!gameData.value) return '';
+                    const baseUrl = gameData.value.images.baseUrl;
+                    const icons = gameData.value.images.icons;
                     return baseUrl + (icons[resultIconState.value] || icons.df);
                 });
                 const cpuDialogue = ref('さて、始めましょうか');
@@ -592,13 +617,9 @@
                 const cpuIconState = ref('df');
 
                 const cpuIcon = computed(() => {
-                    const baseUrl = 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/';
-                    const icons = {
-                        df: 'icon_df.png',
-                        angry: 'icon_angry.png',
-                        panic: 'icon_panic.png',
-                        blush: 'icon_blush.png'
-                    };
+                    if (!gameData.value) return '';
+                    const baseUrl = gameData.value.images.baseUrl;
+                    const icons = gameData.value.images.icons;
                     return baseUrl + icons[cpuIconState.value];
                 });
 
@@ -609,9 +630,23 @@
 
                 // --- Game Logic ---
 
+                const getLog = (key, params = {}) => {
+                    if (!gameData.value) return '';
+                    let template = gameData.value.logs[key];
+                    if (!template) return '';
+                    Object.keys(params).forEach(k => {
+                        template = template.replace(`{${k}}`, params[k]);
+                    });
+                    return template;
+                };
+
+                const getDialogue = (key) => {
+                    return gameData.value?.cpu.dialogues[key] || '';
+                };
+
                 const getCardName = (card) => {
                     if (card.type) {
-                        const names = { gift: 'プレゼントカード', key: 'キーカード', heart: 'ハートカード', suka: '外れカード', trap: 'トラップカード' };
+                        const names = gameData.value?.cards.special || {};
                         return names[card.type] || '特殊カード';
                     }
                     return `${getCardColorName(card.color)}${card.num}`;
@@ -623,7 +658,7 @@
                 };
 
                 const getCardColorName = (color) => {
-                    const names = { red: 'RED', blue: 'BLUE', green: 'GREEN', yellow: 'YELLOW' };
+                    const names = gameData.value?.cards.colors || {};
                     return names[color];
                 };
 
@@ -638,7 +673,7 @@
                 };
 
                 const getSpecialIcon = (type) => {
-                    const icons = { gift: '🎁', key: '🔒', heart: '🩷', suka: '💩', trap: '💀' };
+                    const icons = gameData.value?.cards.icons || {};
                     return icons[type] || '';
                 };
 
@@ -654,15 +689,8 @@
                 };
 
                 const diceHint = computed(() => {
-                    if (!dice.value) return '';
-                    const hints = {
-                        1: '伏せ札を確認できます',
-                        2: '公開札を獲得できます',
-                        3: '公開札を獲得できます',
-                        4: '公開札か伏せ札を獲得できます',
-                        5: '公開札か伏せ札を獲得できます',
-                        6: '公開札・伏せ札・強奪が可能です'
-                    };
+                    if (!dice.value || turn.value !== 'player' || !gameData.value) return '';
+                    const hints = gameData.value.diceHints;
                     return hints[dice.value] || '';
                 });
 
@@ -693,14 +721,24 @@
                     dice.value = null;
                     canRoll.value = true;
                     canAgari.value = false;
-                    cpuDialogue.value = 'さて、始めましょうか';
-                    addLog(`ラウンド ${round.value} 開始！先行はあなたです。`, 'system');
+                    cpuDialogue.value = getDialogue('start');
+                    addLog(getLog('roundStart', { round: round.value }), 'system');
                     cpuIconState.value = 'df';
                 };
 
                 const triggerRoundCutin = () => {
                     showRoundCutin.value = true;
                     setTimeout(() => { showRoundCutin.value = false; }, 2000);
+                };
+
+                const triggerStealCutin = () => {
+                    return new Promise(resolve => {
+                        showStealCutin.value = true;
+                        setTimeout(() => {
+                            showStealCutin.value = false;
+                            resolve();
+                        }, 2000);
+                    });
                 };
 
                 const startGame = () => {
@@ -715,8 +753,8 @@
                     
                     // Show Ep 1
                     playEpisode({
-                        image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep01.png',
-                        text: '今月の給料を賭けて私とゲーム？私が負けたら脱げってことね。別にいいけど、負けないと思うよ？',
+                        image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.ep01,
+                        text: gameData.value?.episodes.ep01,
                         nextScene: 'game'
                     });
                 };
@@ -726,13 +764,13 @@
                     canRoll.value = false;
                     isRolling.value = true;
                     
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         isRolling.value = false;
                         dice.value = Math.floor(Math.random() * 6) + 1;
-                        addLog(`${turn.value === 'player' ? 'あなた' : 'CPU'}のダイス：${dice.value}`, turn.value);
+                        addLog(getLog('diceRoll', { actor: turn.value === 'player' ? 'あなた' : gameData.value?.cpu.name || 'CPU', value: dice.value }), turn.value);
                         
                         if (turn.value === 'cpu') {
-                            setTimeout(cpuAction, 1000);
+                            await cpuAction();
                         }
                     }, 600);
                 };
@@ -742,13 +780,13 @@
                     canRoll.value = false;
                     isRolling.value = true;
                     
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         isRolling.value = false;
                         dice.value = 6;
                         addLog(`${turn.value === 'player' ? 'あなた' : 'CPU'}のダイス：${dice.value} (DEBUG)`, turn.value);
                         
                         if (turn.value === 'cpu') {
-                            setTimeout(cpuAction, 1000);
+                            await cpuAction();
                         }
                     }, 600);
                 };
@@ -760,19 +798,20 @@
                     const card = publicZone.value[index];
                     playerHand.value.push(card);
                     publicZone.value[index] = deck.value.length > 0 ? deck.value.pop() : createDeck().pop();
-                    addLog(`${getCardColorName(card.color)}の${card.num}を手札に加えました。`, 'player');
+                    addLog(getLog('takePublic', { color: getCardColorName(card.color), num: card.num }), 'player');
                     
                     checkAgari('player');
                 };
 
-                const handleCpuHandClick = (index) => {
+                const handleCpuHandClick = async (index) => {
                     if (turn.value !== 'player' || dice.value !== 6) return;
                     
+                    cpuDialogue.value = getDialogue('playerTakeCpuCard');
+                    cpuIconState.value = 'angry';
+                    await triggerStealCutin();
                     const stolen = cpuHand.value.splice(index, 1)[0];
                     playerHand.value.push(stolen);
-                    addLog(`CPUの手札から ${getCardName(stolen)} を奪いました！`, 'player');
-                    cpuDialogue.value = 'ちょっと！私のカード取らないでよ！';
-                    cpuIconState.value = 'angry';
+                    addLog(getLog('stealPlayer', { card: getCardName(stolen) }), 'player');
                     checkAgari('player');
                 };
 
@@ -783,7 +822,7 @@
 
                     if (dice.value === 1) {
                         card.playerPeeked = true;
-                        addLog(`伏せ札を確認しました：${getCardName(card)}`, 'player');
+                        addLog(getLog('peekFaceDown', { card: getCardName(card) }), 'player');
                         endTurn();
                     } else if (dice.value >= 4) {
                         if (card.taken || card.isBeingTaken) return;
@@ -800,9 +839,9 @@
                     card.taken = true;
                     
                     if (card.type === 'suka') {
-                        addLog(`伏せ札は外れでした。`, 'player');
+                        addLog(getLog('peekSuka'), 'player');
                     } else {
-                        addLog(`${actor === 'player' ? 'あなた' : 'CPU'}は ${getCardName(card)} を獲得！`, actor);
+                        addLog(getLog('takeFaceDown', { actor: actor === 'player' ? 'あなた' : gameData.value?.cpu.name || 'CPU', card: getCardName(card) }), actor);
                     }
                     
                     if (card.type === 'trap') {
@@ -813,7 +852,7 @@
                             const idx = hand.indexOf(target);
                             hand.splice(idx, 1);
                             deck.value.push(target);
-                            addLog(`トラップ！手札の ${getCardName(target)} が山札に戻りました。`, actor);
+                            addLog(getLog('trapTrigger', { card: getCardName(target) }), actor);
                         }
                     } else if (card.type !== 'suka') {
                         const hand = actor === 'player' ? playerHand.value : cpuHand.value;
@@ -886,7 +925,7 @@
                             canAgari.value = true;
                             showAgariModal.value = true;
                             // Set Agari Choice Dialogue
-                            cpuDialogue.value = '上がる？上がらないわよね？';
+                            cpuDialogue.value = getDialogue('agariCheck');
                             cpuIconState.value = 'panic';
                         } else {
                             // CPU Logic
@@ -894,7 +933,7 @@
                             if (shouldAgari) {
                                 confirmAgari('cpu');
                             } else {
-                                addLog("CPUは「継続」を選択しました。", 'cpu');
+                                addLog(getLog('cpuContinue'), 'cpu');
                                 endTurn();
                             }
                         }
@@ -938,19 +977,19 @@
                         
                         // Priority-based Result Dialogue
                         if (round.value === 3 && playerPoints.value >= 11) {
-                            resultDialogue.value = "完敗だわ…好きにしなさいよ…";
+                            resultDialogue.value = getDialogue('playerFinalWinPerfect');
                             resultIconState.value = "blush";
                         } else if (round.value === 3 && playerPoints.value <= 10) {
-                            resultDialogue.value = "私が負けるなんて…";
+                            resultDialogue.value = getDialogue('playerFinalWin');
                             resultIconState.value = "blush";
                         } else if (total >= 5) {
-                            resultDialogue.value = "高すぎでしょ！少しは手加減しなさいよ！";
+                            resultDialogue.value = getDialogue('playerWinHigh');
                             resultIconState.value = "panic";
                         } else if (total <= 2) {
-                            resultDialogue.value = "そんな低い点数で…";
+                            resultDialogue.value = getDialogue('playerWinLow');
                             resultIconState.value = "angry";
                         } else {
-                            resultDialogue.value = "ぐぐ、次こそは…";
+                            resultDialogue.value = getDialogue('playerWinNormal');
                             resultIconState.value = "angry";
                         }
 
@@ -960,14 +999,14 @@
                                 playerStacks[c.type]++;
                             }
                         });
-                        addLog(`あなたが上がり！ ${total} pt 獲得。`, 'player');
+                        addLog(getLog('playerAgari', { total }), 'player');
                         playerDialogue.value = ''; 
                         canAgari.value = false;
                         cpuDialogue.value = resultDialogue.value;
                         cpuIconState.value = resultIconState.value;
                     } else {
                         cpuPoints.value += total;
-                        resultDialogue.value = 'この程度かい？もう少し手加減した方がいいかな？';
+                        resultDialogue.value = getDialogue('cpuWin');
                         resultIconState.value = 'df';
                         
                         // Increment stacks on victory
@@ -976,7 +1015,7 @@
                                 cpuStacks[c.type]++;
                             }
                         });
-                        addLog(`CPUが上がり！ ${total} pt 獲得。`, 'cpu');
+                        addLog(getLog('cpuAgari', { total }), 'cpu');
                         cpuDialogue.value = resultDialogue.value;
                         cpuIconState.value = resultIconState.value;
                     }
@@ -988,8 +1027,8 @@
                             // Episode 2 check
                             if (playerPoints.value >= 5 && !episodeFlags.ep2) {
                                 playEpisode({
-                                    image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep02.png',
-                                    text: 'ちょっとはやるみたいね。はい、これでいいのよね？',
+                                    image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.ep02,
+                                    text: gameData.value?.episodes.ep02,
                                     nextScene: 'nextRound'
                                 });
                                 episodeFlags.ep2 = true;
@@ -998,8 +1037,8 @@
                             // Episode 3 check
                             if (playerPoints.value >= 8 && !episodeFlags.ep3) {
                                 playEpisode({
-                                    image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep03.png',
-                                    text: 'アンタイカサマしてるでしょ…そんなにジロジロ見ないでくれる？',
+                                    image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.ep03,
+                                    text: gameData.value?.episodes.ep03,
                                     nextScene: 'nextRound'
                                 });
                                 episodeFlags.ep3 = true;
@@ -1035,7 +1074,9 @@
                 const continueGame = () => {
                     canAgari.value = false;
                     showAgariModal.value = false;
-                    addLog("あなたは「継続」を選択しました。", 'player');
+                    cpuIconState.value = 'df';
+                    cpuDialogue.value = getDialogue('playerContinue');
+                    addLog(getLog('playerContinue'), 'player');
                     endTurn();
                 };
 
@@ -1047,11 +1088,11 @@
                     if (turn.value === 'cpu') {
                         setTimeout(rollDice, 1000);
                     } else {
-                        cpuDialogue.value = 'あなたの番よ。';
+                        cpuDialogue.value = getDialogue('playerTurn');
                     }
                 };
 
-                const cpuAction = () => {
+                const cpuAction = async () => {
                     const d = dice.value;
                     
                     if (d === 1) {
@@ -1060,7 +1101,7 @@
                         if (untaken.length > 0) {
                             const target = untaken[Math.floor(Math.random() * untaken.length)];
                             target.cpuPeeked = true;
-                            addLog("CPUが伏せ札を確認しました。", 'cpu');
+                            addLog(getLog('cpuPeek'), 'cpu');
                         }
                         endTurn();
                     } else if (d === 2 || d === 3) {
@@ -1099,11 +1140,12 @@
                                 }
                             });
 
+                            cpuDialogue.value = getDialogue('cpuSteal');
+                            cpuIconState.value = 'df';
+                            await triggerStealCutin();
                             const stolen = playerHand.value.splice(bestStealIndex, 1)[0];
                             cpuHand.value.push(stolen);
-                            addLog(`CPUがあなたの手札から ${getCardColorName(stolen.color)}${stolen.num} を奪いました！`, 'cpu');
-                            cpuDialogue.value = 'ふふ、そのカード、私が有効に使わせてもらうわね。';
-                            cpuIconState.value = 'df';
+                            addLog(getLog('cpuSteal', { color: getCardColorName(stolen.color), num: stolen.num }), 'cpu');
                             checkAgari('cpu');
                         } else {
                             cpuTakePublic();
@@ -1128,6 +1170,7 @@
 
                     const card = publicZone.value[bestIndex];
                     cpuHand.value.push(card);
+                    addLog(getLog('cpuTakePublic', { color: getCardColorName(card.color), num: card.num }), 'cpu');
                     
                     // Refill public zone
                     if (deck.value.length === 0) {
@@ -1156,9 +1199,10 @@
                     hasSpecialEnding.value = false;
 
                     const setEndContent = () => {
+                        const msgs = gameData.value?.endMessages;
                         if (playerPoints.value > cpuPoints.value) {
                             endTitle.value = "VICTORY";
-                            endMessage.value = "プレイありがとうございました！\n次回作情報はこちら";
+                            endMessage.value = msgs?.victory || "";
                             
                             // Priority 1: Victory AND all 3 stacks
                             const allStacks = playerStacks.gift >= 1 && playerStacks.key >= 1 && playerStacks.heart >= 1;
@@ -1166,14 +1210,14 @@
                             if (allStacks) {
                                 // Play ep04
                                 playEpisode({
-                                    image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep04.png',
-                                    text: 'はい、私の負けよ！これで満足？',
+                                    image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.ep04,
+                                    text: gameData.value?.episodes.ep04,
                                     nextScene: 'end'
                                 });
                                 // Play epsp
                                 playEpisode({
-                                    image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/epsp.png',
-                                    text: '……ねえ、これっぽっちも容赦してくれなかったんだから、私をこんな格好にさせた責任、ちゃんと最後まで取ってくれるんでしょ？',
+                                    image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.epsp,
+                                    text: gameData.value?.episodes.epsp,
                                     nextScene: 'end'
                                 });
                                 return true; // Episode triggered
@@ -1181,18 +1225,18 @@
                             // Priority 2: Victory AND 11pt+
                             else if (playerPoints.value >= 11) {
                                 playEpisode({
-                                    image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep04.png',
-                                    text: 'はい、私の負けよ！これで満足？',
+                                    image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.ep04,
+                                    text: gameData.value?.episodes.ep04,
                                     nextScene: 'end'
                                 });
                                 return true; // Episode triggered
                             }
                         } else if (playerPoints.value < cpuPoints.value) {
                             endTitle.value = "DEFEAT";
-                            endMessage.value = "私の勝ち〜！\n\nプレイありがとうございました！\n次回作情報はこちら";
+                            endMessage.value = msgs?.defeat || "";
                         } else {
                             endTitle.value = "DRAW";
-                            endMessage.value = "今日は引き分けね。\n\nプレイありがとうございました！\n次回作情報はこちら";
+                            endMessage.value = msgs?.draw || "";
                         }
                         return false; // No episode triggered
                     };
@@ -1225,8 +1269,8 @@
 
                 const playSpecialEnding = () => {
                     playEpisode({
-                        image: 'https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/epsp.png',
-                        text: '……ねえ、これっぽっちも容赦してくれなかったんだから、私をこんな格好にさせた責任、ちゃんと最後まで取ってくれるんでしょ？',
+                        image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.epsp,
+                        text: gameData.value?.episodes.epsp,
                         nextScene: 'end'
                     });
                 };
@@ -1312,12 +1356,13 @@
                     resultDialogue, resultIcon, resultIconState,
                     episodeFlags, currentStatusImage,
                     canAgari, showAgariModal, currentYakuPoints, currentYakuBreakdown,
-                    showResultModal, showRoundCutin, resultWinner, resultHand, resultPoints, resultBreakdown,
+                    showResultModal, showRoundCutin, showStealCutin, showRules, resultWinner, resultHand, resultPoints, resultBreakdown,
                     diceHint, isBlackout, hasSpecialEnding,
                     cpuHandScore, playerHandScore,
                     currentEpisode, endImage, endTitle, endMessage,
                     startGame, rollDice, rollDice6, handlePublicClick, handleFaceDownClick, handleCpuHandClick,
                     confirmAgari, continueGame, closeEpisode, resetGame, handleResultClick, playSpecialEnding,
+                    toggleRules,
                     getCardClass, getCardColorName, getSpecialIcon, getCardName
                 };
             }

@@ -1,0 +1,97 @@
+{
+  "cpu": {
+    "name": "CPU",
+    "dialogues": {
+      "start": "さて、始めましょうか",
+      "playerTurn": "あなたの番よ。",
+      "cpuSteal": "私が有効活用してあげるわ",
+      "playerContinue": "ふふ、余裕ぶってられるのも今のうちよ",
+      "playerTakeCpuCard": "ちょっと！私のカード取らないでよ！",
+      "agariCheck": "上がる？上がらないわよね？",
+      "cpuWin": "この程度かい？もう少し手加減した方がいいかな？",
+      "playerWinHigh": "高すぎでしょ！少しは手加減しなさいよ！",
+      "playerWinLow": "そんな低い点数で…",
+      "playerWinNormal": "ぐぐ、次こそは…",
+      "playerFinalWin": "私が負けるなんて…",
+      "playerFinalWinPerfect": "完敗だわ…好きにしなさいよ…"
+    }
+  },
+  "images": {
+    "baseUrl": "https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/",
+    "icons": {
+      "df": "icon_df.png",
+      "angry": "icon_angry.png",
+      "panic": "icon_panic.png",
+      "blush": "icon_blush.png"
+    },
+    "episodes": {
+      "ep01": "ep01.png",
+      "ep02": "ep02.png",
+      "ep03": "ep03.png",
+      "ep04": "ep04.png",
+      "epsp": "epsp.png"
+    }
+  },
+  "episodes": {
+    "ep01": "今月の給料を賭けて私とゲーム？私が負けたら脱げってことね。別にいいけど、負けないと思うよ？",
+    "ep02": "ちょっとはやるみたいね。はい、これでいいのよね？",
+    "ep03": "アンタイカサマしてるでしょ…そんなにジロジロ見ないでくれる？",
+    "ep04": "もう、何見てるのよ…恥ずかしいじゃない…",
+    "epsp": "…全部集めたのね。わかったわ、約束だもんね。好きにしていいわよ…",
+    "endWin": "私の負けね…約束通り、あなたの言うことを聞くわ…",
+    "endLose": "私の勝ちね！給料は返さないわよ！",
+    "endDraw": "今日は引き分けね。"
+  },
+  "endMessages": {
+    "victory": "プレイありがとうございました！\n次回作情報はこちら",
+    "defeat": "私の勝ち〜！\n\nプレイありがとうございました！\n次回作情報はこちら",
+    "draw": "今日は引き分けね。\n\nプレイありがとうございました！\n次回作情報はこちら"
+  },
+  "cards": {
+    "special": {
+      "gift": "プレゼントカード",
+      "key": "キーカード",
+      "heart": "ハートカード",
+      "suka": "外れカード",
+      "trap": "トラップカード"
+    },
+    "colors": {
+      "red": "RED",
+      "blue": "BLUE",
+      "green": "GREEN",
+      "yellow": "YELLOW"
+    },
+    "icons": {
+      "gift": "🎁",
+      "key": "🔒",
+      "heart": "🩷",
+      "suka": "💩",
+      "trap": "💀"
+    }
+  },
+  "logs": {
+    "roundStart": "ラウンド {round} 開始！先行はあなたです。",
+    "diceRoll": "{actor}のダイス：{value}",
+    "takePublic": "{color}の{num}を手札に加えました。",
+    "stealPlayer": "CPUの手札から {card} を奪いました！",
+    "peekFaceDown": "伏せ札を確認しました：{card}",
+    "peekSuka": "伏せ札は外れでした。",
+    "takeFaceDown": "{actor}は {card} を獲得！",
+    "trapTrigger": "トラップ！手札の {card} が山札に戻りました。",
+    "cpuContinue": "CPUは「継続」を選択しました。",
+    "playerAgari": "あなたが上がり！ {total} pt 獲得。",
+    "cpuAgari": "CPUが上がり！ {total} pt 獲得。",
+    "playerContinue": "あなたは「継続」を選択しました。",
+    "cpuPeek": "CPUが伏せ札を確認しました。",
+    "cpuSteal": "CPUがあなたの手札から {color}{num} を奪いました！",
+    "cpuTakePublic": "CPUが公開ゾーンから {color}{num} を取りました。"
+  },
+  "diceHints": {
+    "1": "伏せ札を確認できます",
+    "2": "公開札を獲得できます",
+    "3": "公開札を獲得できます",
+    "4": "公開札か伏せ札を獲得できます",
+    "5": "公開札か伏せ札を獲得できます",
+    "6": "公開札・伏せ札・強奪が可能です"
+  }
+}
