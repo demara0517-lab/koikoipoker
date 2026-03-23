@@ -235,10 +235,27 @@
                     </h1>
                     <p class="text-sm tracking-widest uppercase opacity-80 mb-12 font-bold">VIP ROOM EXCLUSIVE</p>
                     
-                    <button @click="startGame" class="group relative px-12 py-4 bg-transparent border-2 border-[#ff2d75] text-[#ff2d75] font-bold text-xl rounded-full overflow-hidden transition-all hover:bg-[#ff2d75] hover:text-white">
+                    <button @click="scene = 'charaselect'" class="group relative px-12 py-4 bg-transparent border-2 border-[#ff2d75] text-[#ff2d75] font-bold text-xl rounded-full overflow-hidden transition-all hover:bg-[#ff2d75] hover:text-white">
                         <span class="relative z-10">GAME START</span>
                         <div class="absolute inset-0 bg-[#ff2d75] translate-y-full group-hover:translate-y-0 transition-transform"></div>
                     </button>
+                </div>
+            </div>
+        </transition>
+
+        <!-- --- CHARACTER SELECT SCENE --- -->
+        <transition name="fade">
+            <div v-if="scene === 'charaselect'" class="absolute inset-0 z-50 bg-[#0f0514] flex flex-col p-6">
+                <h2 class="text-3xl font-black italic text-white mb-8 tracking-tighter drop-shadow-[0_0_10px_rgba(255,45,117,0.5)]">SELECT CHARACTER</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div v-for="chara in gameData?.characters" :key="chara.id" 
+                         @click="selectCharacter(chara)"
+                         class="relative group cursor-pointer overflow-hidden rounded-2xl border-2 border-white/10 hover:border-[#ff2d75] transition-all">
+                        <img :src="chara.thumbnail" class="w-full aspect-square object-cover group-hover:scale-110 transition-transform duration-500" alt="Character Thumbnail">
+                        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                            <div class="text-white font-bold text-sm">{{ chara.name }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </transition>
@@ -271,7 +288,7 @@
             <div class="flex items-start gap-3 mb-4">
                 <div class="relative shrink-0">
                     <img :src="cpuIcon" class="w-20 h-20 rounded-xl border-2 border-[#9d4edd] object-cover shadow-lg" alt="CPU Icon">
-                    <div class="absolute -bottom-2 -right-2 bg-[#9d4edd] text-[10px] px-2 py-0.5 rounded-full font-bold shadow-md">{{ gameData?.cpu.name || 'CPU' }}</div>
+                    <div class="absolute -bottom-2 -right-2 bg-[#9d4edd] text-[10px] px-2 py-0.5 rounded-full font-bold shadow-md">{{ charaData?.cpu.name || 'CPU' }}</div>
                 </div>
                 <div class="flex-1">
                     <div class="flex justify-between items-end mb-1">
@@ -559,6 +576,7 @@
                 const cpuStacks = reactive({ gift: 0, key: 0, heart: 0 });
                 
                 const gameData = ref(null);
+                const charaData = ref(null);
 
                 onMounted(async () => {
                     try {
@@ -569,6 +587,16 @@
                     }
                 });
 
+                const selectCharacter = async (chara) => {
+                    try {
+                        const response = await fetch(`./${chara.file}`);
+                        charaData.value = await response.json();
+                        startGame();
+                    } catch (e) {
+                        console.error("Failed to load character data", e);
+                    }
+                };
+
                 const deck = ref([]);
                 const publicZone = ref([]);
                 const faceDownZone = ref([]);
@@ -577,9 +605,9 @@
                 
                 const episodeFlags = reactive({ ep2: false, ep3: false, ep4: false, epsp: false });
                 const currentStatusImage = computed(() => {
-                    if (!gameData.value) return '';
-                    const baseUrl = gameData.value.images.baseUrl;
-                    const eps = gameData.value.images.episodes;
+                    if (!charaData.value) return '';
+                    const baseUrl = charaData.value.images.baseUrl;
+                    const eps = charaData.value.images.episodes;
                     if (episodeFlags.epsp) return baseUrl + eps.epsp;
                     if (episodeFlags.ep4) return baseUrl + eps.ep04;
                     if (episodeFlags.ep3) return baseUrl + eps.ep03;
@@ -607,9 +635,9 @@
                 const resultDialogue = ref('');
                 const resultIconState = ref('normal');
                 const resultIcon = computed(() => {
-                    if (!gameData.value) return '';
-                    const baseUrl = gameData.value.images.baseUrl;
-                    const icons = gameData.value.images.icons;
+                    if (!charaData.value) return '';
+                    const baseUrl = charaData.value.images.baseUrl;
+                    const icons = charaData.value.images.icons;
                     return baseUrl + (icons[resultIconState.value] || icons.df);
                 });
                 const cpuDialogue = ref('さて、始めましょうか');
@@ -617,9 +645,9 @@
                 const cpuIconState = ref('df');
 
                 const cpuIcon = computed(() => {
-                    if (!gameData.value) return '';
-                    const baseUrl = gameData.value.images.baseUrl;
-                    const icons = gameData.value.images.icons;
+                    if (!charaData.value) return '';
+                    const baseUrl = charaData.value.images.baseUrl;
+                    const icons = charaData.value.images.icons;
                     return baseUrl + icons[cpuIconState.value];
                 });
 
@@ -641,7 +669,7 @@
                 };
 
                 const getDialogue = (key) => {
-                    return gameData.value?.cpu.dialogues[key] || '';
+                    return charaData.value?.cpu.dialogues[key] || '';
                 };
 
                 const getCardName = (card) => {
@@ -753,8 +781,8 @@
                     
                     // Show Ep 1
                     playEpisode({
-                        image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.ep01,
-                        text: gameData.value?.episodes.ep01,
+                        image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.ep01,
+                        text: charaData.value?.episodes.ep01,
                         nextScene: 'game'
                     });
                 };
@@ -767,7 +795,7 @@
                     setTimeout(async () => {
                         isRolling.value = false;
                         dice.value = Math.floor(Math.random() * 6) + 1;
-                        addLog(getLog('diceRoll', { actor: turn.value === 'player' ? 'あなた' : gameData.value?.cpu.name || 'CPU', value: dice.value }), turn.value);
+                        addLog(getLog('diceRoll', { actor: turn.value === 'player' ? 'あなた' : charaData.value?.cpu.name || 'CPU', value: dice.value }), turn.value);
                         
                         if (turn.value === 'cpu') {
                             await cpuAction();
@@ -841,7 +869,7 @@
                     if (card.type === 'suka') {
                         addLog(getLog('peekSuka'), 'player');
                     } else {
-                        addLog(getLog('takeFaceDown', { actor: actor === 'player' ? 'あなた' : gameData.value?.cpu.name || 'CPU', card: getCardName(card) }), actor);
+                        addLog(getLog('takeFaceDown', { actor: actor === 'player' ? 'あなた' : charaData.value?.cpu.name || 'CPU', card: getCardName(card) }), actor);
                     }
                     
                     if (card.type === 'trap') {
@@ -1027,8 +1055,8 @@
                             // Episode 2 check
                             if (playerPoints.value >= 5 && !episodeFlags.ep2) {
                                 playEpisode({
-                                    image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.ep02,
-                                    text: gameData.value?.episodes.ep02,
+                                    image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.ep02,
+                                    text: charaData.value?.episodes.ep02,
                                     nextScene: 'nextRound'
                                 });
                                 episodeFlags.ep2 = true;
@@ -1037,8 +1065,8 @@
                             // Episode 3 check
                             if (playerPoints.value >= 8 && !episodeFlags.ep3) {
                                 playEpisode({
-                                    image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.ep03,
-                                    text: gameData.value?.episodes.ep03,
+                                    image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.ep03,
+                                    text: charaData.value?.episodes.ep03,
                                     nextScene: 'nextRound'
                                 });
                                 episodeFlags.ep3 = true;
@@ -1210,14 +1238,14 @@
                             if (allStacks) {
                                 // Play ep04
                                 playEpisode({
-                                    image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.ep04,
-                                    text: gameData.value?.episodes.ep04,
+                                    image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.ep04,
+                                    text: charaData.value?.episodes.ep04,
                                     nextScene: 'end'
                                 });
                                 // Play epsp
                                 playEpisode({
-                                    image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.epsp,
-                                    text: gameData.value?.episodes.epsp,
+                                    image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.epsp,
+                                    text: charaData.value?.episodes.epsp,
                                     nextScene: 'end'
                                 });
                                 return true; // Episode triggered
@@ -1225,8 +1253,8 @@
                             // Priority 2: Victory AND 11pt+
                             else if (playerPoints.value >= 11) {
                                 playEpisode({
-                                    image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.ep04,
-                                    text: gameData.value?.episodes.ep04,
+                                    image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.ep04,
+                                    text: charaData.value?.episodes.ep04,
                                     nextScene: 'end'
                                 });
                                 return true; // Episode triggered
@@ -1269,8 +1297,8 @@
 
                 const playSpecialEnding = () => {
                     playEpisode({
-                        image: gameData.value?.images.baseUrl + gameData.value?.images.episodes.epsp,
-                        text: gameData.value?.episodes.epsp,
+                        image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.epsp,
+                        text: charaData.value?.episodes.epsp,
                         nextScene: 'end'
                     });
                 };
@@ -1350,7 +1378,7 @@
 
                 return {
                     scene, round, turn, dice, isRolling, canRoll, logs,
-                    playerPoints, cpuPoints, playerStacks, cpuStacks,
+                    playerPoints, cpuPoints, playerStacks, cpuStacks, gameData, charaData,
                     publicZone, faceDownZone, playerHand, cpuHand,
                     cpuIcon, cpuIconState, cpuDialogue, playerDialogue,
                     resultDialogue, resultIcon, resultIconState,
@@ -1362,7 +1390,7 @@
                     currentEpisode, endImage, endTitle, endMessage,
                     startGame, rollDice, rollDice6, handlePublicClick, handleFaceDownClick, handleCpuHandClick,
                     confirmAgari, continueGame, closeEpisode, resetGame, handleResultClick, playSpecialEnding,
-                    toggleRules,
+                    toggleRules, selectCharacter,
                     getCardClass, getCardColorName, getSpecialIcon, getCardName
                 };
             }
