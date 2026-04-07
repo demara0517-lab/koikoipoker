@@ -2,9 +2,21 @@
   "characters": [
     {
       "id": "chara01",
-      "name": "店長",
+      "name": "後輩",
       "file": "chara01.json",
-      "thumbnail": "https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/icon_df.png"
+      "thumbnail": "https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/kh_df.png"
+    },
+    {
+      "id": "chara02",
+      "name": "ギャル",
+      "file": "chara02.json",
+      "thumbnail": "https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/gal_df.png"
+    },
+    {
+      "id": "chara03",
+      "name": "雫",
+      "file": "chara03.json",
+      "thumbnail": "https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/shizuku_df.png"
     }
   ],
   "endMessages": {
@@ -40,6 +52,7 @@
     "takePublic": "{color}の{num}を手札に加えました。",
     "stealPlayer": "CPUの手札から {card} を奪いました！",
     "peekFaceDown": "伏せ札を確認しました：{card}",
+    "peekPublic": "公開札を確認しました：{color}{num}",
     "peekSuka": "伏せ札は外れでした。",
     "takeFaceDown": "{actor}は {card} を獲得！",
     "trapTrigger": "トラップ！手札の {card} が山札に戻りました。",
@@ -52,11 +65,11 @@
     "cpuTakePublic": "CPUが公開ゾーンから {color}{num} を取りました。"
   },
   "diceHints": {
-    "1": "伏せ札を確認できます",
-    "2": "公開札を獲得できます",
-    "3": "公開札を獲得できます",
-    "4": "公開札か伏せ札を獲得できます",
-    "5": "公開札か伏せ札を獲得できます",
-    "6": "公開札・伏せ札・強奪が可能です"
+    "1": "フィールドの伏せ札を1枚確認する",
+    "2": "フィールドの公開札を1枚獲得する",
+    "3": "フィールドの公開札を1枚獲得する",
+    "4": "フィールドの公開札または伏せ札を1枚獲得する",
+    "5": "フィールドの公開札または伏せ札を1枚獲得する",
+    "6": "フィールドの公開札・伏せ札・相手の手札を1枚獲得する"
   }
 }

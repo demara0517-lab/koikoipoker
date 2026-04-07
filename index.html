@@ -22,6 +22,12 @@
             font-family: 'Outfit', 'Noto Sans JP', sans-serif;
             overflow-x: hidden;
             user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        img {
+            pointer-events: none;
+            -webkit-user-drag: none;
         }
         .font-bold-jp { font-family: 'Noto Sans JP', sans-serif; font-weight: 700; }
         
@@ -144,6 +150,32 @@
 </head>
 <body>
     <div id="app" class="max-w-md mx-auto min-h-screen relative overflow-hidden bg-[#0f0514]">
+        <!-- Age Verification Modal -->
+        <transition name="fade">
+            <div v-if="!isAgeVerified" class="fixed inset-0 z-[1000] bg-black flex items-center justify-center p-6 text-center">
+                <div class="bg-[#1a1a2e] w-full max-w-sm p-8 rounded-3xl border-2 border-[#ff2d75] shadow-[0_0_50px_rgba(255,45,117,0.3)]">
+                    <h2 class="text-2xl font-black italic text-white mb-4 tracking-tighter">年齢確認 / Age Verification</h2>
+                    <p class="text-sm font-bold-jp text-white/80 mb-8 leading-relaxed">
+                        このゲームには成人向けの表現が含まれています。<br>
+                        あなたは18歳以上ですか？<br>
+                        <span class="text-[10px] opacity-60 block mt-2">This game contains adult content. Are you 18 or older?</span>
+                    </p>
+                    <div class="flex flex-col gap-4">
+                        <button @click="verifyAge" class="w-full py-4 bg-[#ff2d75] text-white font-bold rounded-2xl text-lg hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(255,45,117,0.4)]">
+                            はい (18歳以上) / YES
+                        </button>
+                        <button @click="rejectAge" class="w-full py-3 bg-white/5 text-white/60 font-bold rounded-2xl text-sm hover:bg-white/10 transition-colors">
+                            いいえ (18歳未満) / NO
+                        </button>
+                    </div>
+                    <p v-if="ageRejected" class="mt-6 text-xs text-[#ff2d75] font-bold animate-pulse">
+                        18歳未満の方はプレイできません。<br>
+                        Under 18s are not permitted to play.
+                    </p>
+                </div>
+            </div>
+        </transition>
+
         <!-- BGM Control -->
         <div class="fixed top-4 right-4 z-[400] flex items-center gap-2">
             <button @click="toggleBgm" class="w-10 h-10 rounded-full bg-black/50 border border-white/20 flex items-center justify-center text-white hover:bg-white/10 transition-colors shadow-lg">
@@ -199,7 +231,7 @@
             <div class="flex flex-wrap justify-center gap-2 mb-6 max-w-xs">
                 <div v-for="(card, i) in resultHand" :key="i" 
                      class="w-12 h-18 rounded-lg flex flex-col items-center justify-center text-sm font-bold border-2 shadow-lg"
-                     :class="card.type ? 'border-white/20 bg-white/10' : getCardClass(card)">
+                     :class="getCardClass(card)">
                     <template v-if="card.type">
                         <span class="text-2xl">{{ getSpecialIcon(card.type) }}</span>
                     </template>
@@ -243,7 +275,7 @@
         <!-- --- TITLE SCENE --- -->
         <transition name="fade">
             <div v-if="scene === 'title'" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black">
-                <img src="https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/ep01.png" class="absolute inset-0 object-cover opacity-60 w-full h-full" alt="Title Background">
+                <img src="https://pub-faa05af4079a49dc9f24267ae3df9be4.r2.dev/title.png" class="absolute inset-0 object-cover opacity-60 w-full h-full" alt="Title Background" draggable="false">
                 <div class="relative z-10 text-center px-6">
                     <h1 class="text-5xl font-black italic tracking-tighter mb-2 text-white drop-shadow-[0_0_10px_rgba(255,45,117,0.8)]">
                         脱がせ！<br>
@@ -267,7 +299,7 @@
                     <div v-for="chara in gameData?.characters" :key="chara.id" 
                          @click="selectCharacter(chara)"
                          class="relative group cursor-pointer overflow-hidden rounded-2xl border-2 border-white/10 hover:border-[#ff2d75] transition-all">
-                        <img :src="chara.thumbnail" class="w-full aspect-square object-cover group-hover:scale-110 transition-transform duration-500" alt="Character Thumbnail">
+                        <img :src="chara.thumbnail" class="w-full aspect-square object-cover group-hover:scale-110 transition-transform duration-500" alt="Character Thumbnail" draggable="false">
                         <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                             <div class="text-white font-bold text-sm">{{ chara.name }}</div>
                         </div>
@@ -284,31 +316,58 @@
                     <div class="text-[10px] font-bold-jp text-white/40 tracking-widest uppercase">[ルール説明]</div>
                     <div class="text-white/40 text-[10px]">{{ showRules ? '▲ 閉じる' : '▼ 開く' }}</div>
                 </div>
-                <div v-show="showRules" class="mt-2 space-y-2 text-[11px] font-bold-jp text-white/80 leading-relaxed transition-all duration-300">
-                    <p>・3ラウンド終了時点でポイントが多いプレイヤーの勝利です</p>
-                    <div class="bg-white/5 p-2 rounded-lg">
-                        <p class="text-[#ff2d75] font-black mb-1">【役】</p>
-                        <ul class="list-none space-y-1 ml-1">
-                            <li>・連番：1pt：連続した数字のカードが4枚以上</li>
-                            <li>・同数：2pt：同じ数字のカードが3枚以上</li>
-                            <li>・同色：3pt：同じ色のカードが4枚以上</li>
-                            <li class="text-[10px] text-white/40 pl-2">※それぞれ1枚追加ごとに+1pt</li>
+                <div v-show="showRules" class="mt-2 space-y-3 text-[11px] font-bold-jp text-white/80 leading-relaxed transition-all duration-300">
+                    <p>本作は、フィールドのカードを奪い合い、役を揃えてポイントを競う対戦型カードゲームです。3ラウンド終了時点での合計ポイントで勝敗が決まります。</p>
+                    
+                    <div>
+                        <p class="text-[#ff2d75] font-black mb-1">▼ 基本ルール</p>
+                        <p>3ラウンド制。各ターンではダイスの目に応じたアクションを行い、カードを集めます。<br>
+                        役が完成した時点で「上がり」を宣言でき、その役に応じたポイントを獲得します。より高い役を目指して継続することもできます。<br>
+                        3ラウンド終了時、相手より多くのポイントを獲得できていれば勝利です。<br>
+                        獲得したポイントや勝利状況に応じて、特別なシーンがアンロックされます。</p>
+                        <ul class="list-none ml-1 space-y-0.5 text-[10px] opacity-80">
+                            <li>・シーン 1： 5pt 獲得</li>
+                            <li>・シーン 2： 8pt 獲得</li>
+                            <li>・シーン 3： 12pt 以上獲得 ＋ 勝利</li>
+                            <li>・スペシャル： 全種のボーナスカウントを1pt以上保持 ＋ 勝利</li>
                         </ul>
                     </div>
-                    <p>・🩷🔑🎁は役の成立に関与しないボーナスカードです</p>
-                    <p class="text-[10px] text-white/40 italic leading-tight">・全てのボーナスカードを使った状態でゲームに勝利するとスペシャルシーンが閲覧できます。</p>
+
+                    <div>
+                        <p class="text-[#ff2d75] font-black mb-1">▼ ダイスの目とアクション</p>
+                        <ul class="list-none ml-1 space-y-0.5">
+                            <li>1：フィールドの伏せ札を1枚確認する</li>
+                            <li>2,3：フィールドの公開札を1枚獲得する</li>
+                            <li>4,5：フィールドの公開札または伏せ札を1枚獲得する</li>
+                            <li>6：フィールドの公開札または伏せ札、相手の手札を1枚獲得する</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <p class="text-[#ff2d75] font-black mb-1">▼ 役と獲得ポイント</p>
+                        <ul class="list-none ml-1 space-y-0.5">
+                            <li>・連番（1pt〜）： 連続した数字のカードが4枚以上</li>
+                            <li>・同数（2pt〜）： 同じ数字のカードが3枚以上</li>
+                            <li>・同色（3pt〜）： 同じ色のカードが4枚以上</li>
+                            <li class="text-[10px] opacity-60">※各役とも、規定枚数から1枚増えるごとに＋1pt加算されます。</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <p class="text-[#ff2d75] font-black mb-1">▼ ボーナスカード（🩷・🔑・🎁）</p>
+                        <p>これらの特殊カードは役の成立には関わりませんが、保持した状態で上がることでポイントボーナスおよびボーナスカウントが得られます。</p>
+                    </div>
                 </div>
             </div>
 
             <!-- 2. CPU Section -->
             <div class="flex items-start gap-3 mb-4">
                 <div class="relative shrink-0">
-                    <img :src="cpuIcon" class="w-20 h-20 rounded-xl border-2 border-[#9d4edd] object-cover shadow-lg" alt="CPU Icon">
+                    <img :src="cpuIcon" class="w-20 h-20 rounded-xl border-2 border-[#9d4edd] object-cover shadow-lg" alt="CPU Icon" draggable="false">
                     <div class="absolute -bottom-2 -right-2 bg-[#9d4edd] text-[10px] px-2 py-0.5 rounded-full font-bold shadow-md">{{ charaData?.cpu.name || 'CPU' }}</div>
                 </div>
                 <div class="flex-1">
                     <div class="flex justify-between items-end mb-1">
-                        <div class="text-sm font-bold text-white/90">{{ charaData?.cpu.name || '店長' }}</div>
                         <div class="text-xs font-bold text-[#9d4edd]">pt : {{ cpuPoints }}</div>
                     </div>
                     <!-- Speech Bubble -->
@@ -326,7 +385,7 @@
                     <div v-for="(card, i) in cpuHand" :key="i" 
                          @click="handleCpuHandClick(i)"
                          class="w-8 h-12 rounded-sm flex items-center justify-center text-xs font-bold border shadow-sm transition-transform"
-                         :class="[card.type ? 'border-white/10 bg-white/5' : getCardClass(card), {'cursor-pointer hover:scale-110 ring-2 ring-white': dice === 6 && turn === 'player'}]">
+                         :class="[getCardClass(card), {'cursor-pointer hover:scale-110 ring-2 ring-white': dice === 6 && turn === 'player'}]">
                         <template v-if="card.type">
                             <span class="text-[10px]">{{ getSpecialIcon(card.type) }}</span>
                         </template>
@@ -442,7 +501,7 @@
                 <div class="flex flex-wrap gap-1 min-h-[56px]">
                     <div v-for="(card, i) in playerHand" :key="i" 
                          class="w-10 h-14 rounded-md flex flex-col items-center justify-center text-sm font-bold border-2 shadow-md"
-                         :class="card.type ? 'border-white/20 bg-white/10' : getCardClass(card)">
+                         :class="getCardClass(card)">
                         <template v-if="card.type">
                             <span class="text-xl">{{ getSpecialIcon(card.type) }}</span>
                         </template>
@@ -476,12 +535,11 @@
         <transition name="fade">
             <div v-if="scene === 'episode'" class="absolute inset-0 z-[60] bg-black flex flex-col">
                 <div class="flex-1 relative overflow-hidden">
-                    <img :src="currentEpisode.image" class="w-full h-full object-cover" alt="Episode Image">
+                    <img :src="currentEpisode.image" class="w-full h-full object-cover" alt="Episode Image" draggable="false">
                     <div class="absolute inset-x-0 bottom-0 h-[10%] bg-gradient-to-t from-black to-transparent"></div>
                 </div>
                 <div class="p-6 bg-[#0f0514] border-t border-white/10 min-h-[180px] flex flex-col justify-between">
                     <div>
-                        <div class="text-[#ff2d75] font-bold text-sm mb-1">{{ charaData?.cpu.name || '店長' }}</div>
                         <p class="text-lg font-bold-jp leading-relaxed">{{ currentEpisode.text }}</p>
                     </div>
                     <button @click="closeEpisode" class="self-end mt-4 px-8 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm font-bold tracking-widest transition-colors">
@@ -498,7 +556,7 @@
                 <h2 class="text-4xl font-black italic mb-6 tracking-tighter">{{ endTitle }}</h2>
 
                 <!-- 2. 画像 (Image) -->
-                <img :src="currentStatusImage" class="w-full max-w-xs rounded-3xl mb-8 shadow-2xl border-2 border-white/10" alt="End Image">
+                <img :src="currentStatusImage" class="w-full max-w-xs rounded-3xl mb-8 shadow-2xl border-2 border-white/10" alt="End Image" draggable="false">
 
                 <!-- 3. プレイありがとうございました！ 次回作情報はこちら (Message) -->
                 <p class="text-lg font-bold-jp mb-6 opacity-80 whitespace-pre-line">{{ endMessage }}</p>
@@ -523,9 +581,9 @@
                 
                 <!-- 2. 手札 -->
                 <div class="flex flex-wrap justify-center gap-1 mb-6">
-                    <div v-for="(card, i) in playerHand" :key="i" 
+                    <div v-for="(card, i) in sortedPlayerHand" :key="i" 
                          class="w-10 h-14 rounded-md flex flex-col items-center justify-center text-xs font-bold border-2 shadow-md"
-                         :class="card.type ? 'border-white/20 bg-white/10' : getCardClass(card)">
+                         :class="getCardClass(card)">
                         <template v-if="card.type">
                             <span class="text-lg">{{ getSpecialIcon(card.type) }}</span>
                         </template>
@@ -555,7 +613,7 @@
 
                 <!-- 6. CPUのセリフ -->
                 <div class="flex items-center gap-4 mb-6 bg-white/5 p-4 rounded-2xl border border-white/10 text-left">
-                    <img :src="charaData?.images.baseUrl + charaData?.images.icons.panic" class="w-16 h-16 rounded-xl border-2 border-[#ff2d75] object-cover" alt="CPU Icon">
+                    <img :src="charaData?.images.baseUrl + charaData?.images.icons.panic" class="w-16 h-16 rounded-xl border-2 border-[#ff2d75] object-cover" alt="CPU Icon" draggable="false">
                     <div class="flex-1">
                         <div class="text-sm font-bold-jp text-white leading-relaxed">{{ charaData?.cpu.dialogues.agariCheck || '上がる？上がらないわよね？' }}</div>
                     </div>
@@ -580,6 +638,21 @@
 
         createApp({
             setup() {
+                const isAgeVerified = ref(localStorage.getItem('ageVerified') === 'true');
+                const ageRejected = ref(false);
+
+                const verifyAge = () => {
+                    isAgeVerified.value = true;
+                    localStorage.setItem('ageVerified', 'true');
+                };
+
+                const rejectAge = () => {
+                    ageRejected.value = true;
+                };
+
+                onMounted(() => {
+                    window.addEventListener('contextmenu', e => e.preventDefault());
+                });
                 const scene = ref('title');
                 const round = ref(1);
                 const turn = ref('player');
@@ -737,19 +810,41 @@
                 };
 
                 const getCardClass = (card) => {
+                    if (card.type) return 'border-white/20 bg-white/10';
                     const colors = {
                         red: 'bg-red-500/20 border-red-500 text-red-400',
                         blue: 'bg-blue-500/20 border-blue-500 text-blue-400',
                         green: 'bg-green-500/20 border-green-500 text-green-400',
                         yellow: 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
                     };
-                    return colors[card.color];
+                    return colors[card.color] || 'border-white/20 bg-white/10';
                 };
 
                 const getSpecialIcon = (type) => {
                     const icons = gameData.value?.cards.icons || {};
                     return icons[type] || '';
                 };
+
+                const sortHand = (hand) => {
+                    if (!hand) return [];
+                    const colorOrder = ['red', 'blue', 'green', 'yellow'];
+                    return [...hand].sort((a, b) => {
+                        // 1. Bonus cards (type exists) at the end
+                        if (a.type && !b.type) return 1;
+                        if (!a.type && b.type) return -1;
+                        if (a.type && b.type) return 0;
+
+                        // 2. Normal cards: Number ascending
+                        if (a.num !== b.num) return a.num - b.num;
+
+                        // 3. Normal cards: Color order
+                        const colorA = colorOrder.indexOf(a.color);
+                        const colorB = colorOrder.indexOf(b.color);
+                        return colorA - colorB;
+                    });
+                };
+
+                const sortedPlayerHand = computed(() => sortHand(playerHand.value));
 
                 const createDeck = () => {
                     const colors = ['red', 'blue', 'green', 'yellow'];
@@ -871,9 +966,11 @@
 
                 const handlePublicClick = (index) => {
                     if (turn.value !== 'player' || !dice.value) return;
-                    if (dice.value === 1) return; // 1 is only for peeking
                     
                     const card = publicZone.value[index];
+                    
+                    if (dice.value < 2) return; // 1 cannot take public
+                    
                     playerHand.value.push(card);
                     publicZone.value[index] = deck.value.length > 0 ? deck.value.pop() : createDeck().pop();
                     addLog(getLog('takePublic', { color: getCardColorName(card.color), num: card.num }), 'player');
@@ -1036,16 +1133,13 @@
                 };
 
                 const confirmAgari = (winner = 'player') => {
-                    // Ensure winner is a string (fix for PointerEvent from @click)
                     const winnerStr = typeof winner === 'string' ? winner : 'player';
-                    
                     showAgariModal.value = false;
                     const hand = winnerStr === 'player' ? playerHand.value : cpuHand.value;
                     const { total, breakdown } = checkYaku(hand);
                     
-                    // Show Result Modal
                     resultWinner.value = winnerStr;
-                    resultHand.value = [...hand];
+                    resultHand.value = sortHand(hand);
                     resultPoints.value = total;
                     resultBreakdown.value = breakdown;
                     showResultModal.value = true;
@@ -1058,7 +1152,6 @@
                     if (winnerStr === 'player') {
                         playerPoints.value += total;
                         
-                        // Priority-based Result Dialogue
                         if (round.value === 3 && playerPoints.value >= 11) {
                             resultDialogue.value = getDialogue('playerFinalWinPerfect');
                             resultIconState.value = "blush";
@@ -1076,11 +1169,8 @@
                             resultIconState.value = "angry";
                         }
 
-                        // Increment stacks on victory
                         hand.forEach(c => {
-                            if (c.type && playerStacks[c.type] !== undefined) {
-                                playerStacks[c.type]++;
-                            }
+                            if (c.type && playerStacks[c.type] !== undefined) playerStacks[c.type]++;
                         });
                         addLog(getLog('playerAgari', { total }), 'player');
                         playerDialogue.value = ''; 
@@ -1091,39 +1181,25 @@
                         cpuPoints.value += total;
                         resultDialogue.value = getDialogue('cpuWin');
                         resultIconState.value = 'df';
-                        
-                        // Increment stacks on victory
                         hand.forEach(c => {
-                            if (c.type && cpuStacks[c.type] !== undefined) {
-                                cpuStacks[c.type]++;
-                            }
+                            if (c.type && cpuStacks[c.type] !== undefined) cpuStacks[c.type]++;
                         });
                         addLog(getLog('cpuAgari', { total }), 'cpu');
                         cpuDialogue.value = resultDialogue.value;
                         cpuIconState.value = resultIconState.value;
                     }
-                    
-                    // Prepare next step
+
+                    resultDialogue.value = cpuDialogue.value;
                     resultNextStep.value = () => {
                         let epTriggered = false;
                         if (winnerStr === 'player') {
-                            // Episode 2 check
                             if (playerPoints.value >= 5 && !episodeFlags.ep2) {
-                                playEpisode({
-                                    image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.ep02,
-                                    text: charaData.value?.episodes.ep02,
-                                    nextScene: 'nextRound'
-                                });
+                                playEpisode({ image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.ep02, text: charaData.value?.episodes.ep02, nextScene: 'nextRound' });
                                 episodeFlags.ep2 = true;
                                 epTriggered = true;
                             }
-                            // Episode 3 check
                             if (playerPoints.value >= 8 && !episodeFlags.ep3) {
-                                playEpisode({
-                                    image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.ep03,
-                                    text: charaData.value?.episodes.ep03,
-                                    nextScene: 'nextRound'
-                                });
+                                playEpisode({ image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.ep03, text: charaData.value?.episodes.ep03, nextScene: 'nextRound' });
                                 episodeFlags.ep3 = true;
                                 epTriggered = true;
                             }
@@ -1132,17 +1208,9 @@
                         if (epTriggered) {
                             showResultModal.value = false;
                         } else {
-                            // If it's the last round, we need a blackout transition to endGame/episodes
-                            if (round.value >= 3) {
-                                isBlackout.value = true;
-                                setTimeout(() => {
-                                    showResultModal.value = false;
-                                    nextRound(); // This will call endGame
-                                }, 400);
-                            } else {
-                                showResultModal.value = false;
-                                nextRound();
-                            }
+                            showResultModal.value = false;
+                            if (round.value >= 3) triggerBlackout(nextRound);
+                            else nextRound();
                         }
                     };
                 };
@@ -1279,73 +1347,40 @@
 
                 const endGame = () => {
                     hasSpecialEnding.value = false;
+                    const msgs = gameData.value?.endMessages;
+                    const charaMsgs = charaData.value?.episodes;
+                    const win = playerPoints.value > cpuPoints.value;
+                    const lose = playerPoints.value < cpuPoints.value;
 
-                    const setEndContent = () => {
-                        const msgs = gameData.value?.endMessages;
-                        const charaMsgs = charaData.value?.episodes;
+                    if (win) {
+                        endTitle.value = "VICTORY";
+                        endMessage.value = (charaMsgs?.endWin ? charaMsgs.endWin + "\n\n" : "") + (msgs?.victory || "");
                         
-                        if (playerPoints.value > cpuPoints.value) {
-                            endTitle.value = "VICTORY";
-                            const charaMsg = charaMsgs?.endWin ? charaMsgs.endWin + "\n\n" : "";
-                            endMessage.value = charaMsg + (msgs?.victory || "");
+                        if (playerPoints.value >= 12) {
+                            const baseUrl = charaData.value?.images.baseUrl;
+                            const eps = charaData.value?.images.episodes;
+                            const texts = charaData.value?.episodes;
+
+                            playEpisode({ image: baseUrl + eps.ep04, text: texts.ep04, nextScene: 'end' });
                             
-                            // New Logic: Only trigger episodes if 12pt or more
-                            if (playerPoints.value >= 12) {
-                                const allStacks = playerStacks.gift >= 1 && playerStacks.key >= 1 && playerStacks.heart >= 1;
-                                
-                                // Always play ep04 if >= 12pt
-                                playEpisode({
-                                    image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.ep04,
-                                    text: charaData.value?.episodes.ep04,
-                                    nextScene: 'end'
-                                });
-
-                                if (allStacks) {
-                                    // Also play epsp if all stacks are held
-                                    playEpisode({
-                                        image: charaData.value?.images.baseUrl + charaData.value?.images.episodes.epsp,
-                                        text: charaData.value?.episodes.epsp,
-                                        nextScene: 'end'
-                                    });
-                                }
-                                return true; // Episode triggered
+                            if (playerStacks.gift >= 1 && playerStacks.key >= 1 && playerStacks.heart >= 1) {
+                                playEpisode({ image: baseUrl + eps.epsp, text: texts.epsp, nextScene: 'end' });
                             }
-                        } else if (playerPoints.value < cpuPoints.value) {
-                            endTitle.value = "DEFEAT";
-                            const charaMsg = charaMsgs?.endLose ? charaMsgs.endLose + "\n\n" : "";
-                            endMessage.value = charaMsg + (msgs?.defeat || "");
-                        } else {
-                            endTitle.value = "DRAW";
-                            const charaMsg = charaMsgs?.endDraw ? charaMsgs.endDraw + "\n\n" : "";
-                            endMessage.value = charaMsg + (msgs?.draw || "");
+                            
+                            if (isBlackout.value) showNextEpisode(true);
+                            else triggerBlackout(() => showNextEpisode(true));
+                            return;
                         }
-                        return false; // No episode triggered
-                    };
-
-                    const epTriggered = setEndContent();
-                    if (epTriggered) {
-                        if (isBlackout.value) {
-                            showNextEpisode(true);
-                        } else {
-                            showNextEpisode();
-                        }
+                    } else if (lose) {
+                        endTitle.value = "DEFEAT";
+                        endMessage.value = (charaMsgs?.endLose ? charaMsgs.endLose + "\n\n" : "") + (msgs?.defeat || "");
                     } else {
-                        if (isBlackout.value) {
-                            // Already in blackout (likely from closeEpisode)
-                            scene.value = 'end';
-                            setTimeout(() => {
-                                isBlackout.value = false;
-                            }, 50);
-                        } else {
-                            isBlackout.value = true;
-                            setTimeout(() => {
-                                scene.value = 'end';
-                                setTimeout(() => {
-                                    isBlackout.value = false;
-                                }, 50);
-                            }, 400);
-                        }
+                        endTitle.value = "DRAW";
+                        endMessage.value = (charaMsgs?.endDraw ? charaMsgs.endDraw + "\n\n" : "") + (msgs?.draw || "");
                     }
+
+                    if (isBlackout.value) scene.value = 'end';
+                    else triggerBlackout(() => scene.value = 'end');
                 };
 
                 const playSpecialEnding = () => {
@@ -1369,28 +1404,33 @@
                     }
                 };
 
-                const showNextEpisode = (alreadyBlackout = false) => {
-                    if (episodeQueue.value.length > 0) {
-                        if (!alreadyBlackout) isBlackout.value = true;
-                        
-                        const transitionTime = alreadyBlackout ? 0 : 400;
-                        
+                const triggerBlackout = (callback) => {
+                    isBlackout.value = true;
+                    setTimeout(() => {
+                        callback();
                         setTimeout(() => {
-                            const ep = episodeQueue.value.shift();
-                            Object.assign(currentEpisode, ep);
-                            endImage.value = ep.image;
-                            
-                            // Ensure all modals are closed
-                            showResultModal.value = false;
-                            showAgariModal.value = false;
-                            
-                            scene.value = 'episode';
-                            
-                            // Buffer to ensure scene is rendered before fade-in
-                            setTimeout(() => {
-                                isBlackout.value = false;
-                            }, 50);
-                        }, transitionTime);
+                            isBlackout.value = false;
+                        }, 50);
+                    }, 400);
+                };
+
+                const showNextEpisode = (alreadyBlackout = false) => {
+                    if (episodeQueue.value.length === 0) return;
+                    
+                    const transition = () => {
+                        const ep = episodeQueue.value.shift();
+                        Object.assign(currentEpisode, ep);
+                        endImage.value = ep.image;
+                        showResultModal.value = false;
+                        showAgariModal.value = false;
+                        scene.value = 'episode';
+                    };
+
+                    if (alreadyBlackout) {
+                        transition();
+                        setTimeout(() => isBlackout.value = false, 50);
+                    } else {
+                        triggerBlackout(transition);
                     }
                 };
 
@@ -1426,10 +1466,11 @@
                     }, 400);
                 };
 
-                const cpuHandScore = computed(() => checkYaku(cpuHand.value, cpuStacks).total);
-                const playerHandScore = computed(() => checkYaku(playerHand.value, playerStacks).total);
+                const cpuHandScore = computed(() => checkYaku(cpuHand.value).total);
+                const playerHandScore = computed(() => checkYaku(playerHand.value).total);
 
                 return {
+                    isAgeVerified, ageRejected, verifyAge, rejectAge,
                     scene, round, turn, dice, isRolling, canRoll, logs,
                     playerPoints, cpuPoints, playerStacks, cpuStacks, gameData, charaData,
                     publicZone, faceDownZone, playerHand, cpuHand,
@@ -1437,6 +1478,7 @@
                     resultDialogue, resultIcon, resultIconState,
                     episodeFlags, currentStatusImage,
                     canAgari, showAgariModal, currentYakuPoints, currentYakuBreakdown,
+                    sortedPlayerHand,
                     showResultModal, showRoundCutin, showStealCutin, showRules, resultWinner, resultHand, resultPoints, resultBreakdown,
                     diceHint, isBlackout, hasSpecialEnding,
                     cpuHandScore, playerHandScore,
